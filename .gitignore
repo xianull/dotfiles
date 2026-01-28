@@ -1,0 +1,11 @@
+tmux/plugins/tpm
+# Spicetify 缓存与备份
+spicetify/Backup/
+spicetify/Extracted/
+spicetify/config-xp.ini.bak
+
+# 系统垃圾
+.DS_Store
+
+# 日志
+*.log
