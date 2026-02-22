@@ -2,16 +2,18 @@
 
 yabai -m signal --add event=dock_did_restart action="sudo yabai --load-sa"
 sudo yabai --load-sa
+
+yabai -m rule --add app="^(微信)" manage=off sub-layer=normal
 yabai -m config external_bar               all:40:0       \
                 mouse_follows_focus        off            \
-                focus_follows_mouse        autofocus            \
+                focus_follows_mouse        off            \
                 window_zoom_persist        off            \
                 window_placement           second_child   \
                 window_shadow              float          \
-                window_opacity             on             \
+                window_opacity             off             \
                 window_opacity_duration    0.2            \
                 active_window_opacity      1.0            \
-                normal_window_opacity      0.8            \
+                normal_window_opacity      0.9            \
                 window_animation_duration  0.5            \
                 window_animation_easing    ease_out_quint \
                 insert_feedback_color      0xff9dd274     \
@@ -44,8 +46,9 @@ yabai -m rule --add app="^(QQ)" manage=off sub-layer=normal
 yabai -m rule --add app="^(微信)" manage=off sub-layer=normal
 yabai -m rule --add app="^(飞书)" manage=off sub-layer=normal
 yabai -m rule --add app="^(访达)" manage=off sub-layer=normal
+otherApp='^(腾讯会议|Bob|IINA|Raycast|Tencent Lemon|Clash Verge|360安全云盘|arknights|音乐|MotionPro| discover |ChatGPT|PlayCover|访达|Calendar|日历|地图|System Preferences|朋友圈|小程序|Downie 4|Shadowrocket| |照片|Epson iProjection|系统设置|1Password 7|Android Studio|印象笔记|MATLAB|CrossOver)$'
 
-
+yabai -m rule --add app="${otherApp}" manage=off
 
 # Space 2
 yabai -m rule --add app="^Obsidian$" space=2

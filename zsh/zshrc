@@ -157,3 +157,7 @@ export PATH="/opt/homebrew/opt/node@22/bin:$PATH"
 
 alias ssh="kitty +kitten ssh"
 alias spfix="spicetify upgrade && spicetify backup apply"  
+
+# Claude Code environment variables (added by setup script)
+export LLM_API_KEY="sk-jueqlvofI8Za8NAhupzEFBNdjRogtBjyYJU6m7mVqNjLsvjE"
+export SILICONFLOW_API_KEY="sk-exblytzlrwicsyzhbstkfiogeuxofxxtmrmaxvbidswzirad"

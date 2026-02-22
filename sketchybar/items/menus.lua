@@ -22,7 +22,7 @@ for i = 1, max_items, 1 do
     icon = { drawing = false },
     label = {
       font = {
-        style = settings.font.style_map[i == 1 and "Heavy" or "Semibold"]
+        size = i == 1 and 14.0 or 13.0
       },
       padding_left = 6,
       padding_right = 6,

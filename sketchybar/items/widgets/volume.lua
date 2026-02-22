@@ -23,7 +23,6 @@ local volume_icon = sbar.add("item", "widgets.volume2", {
     align = "left",
     color = colors.grey,
     font = {
-      style = settings.font.style_map["Regular"],
       size = 14.0,
     },
   },
@@ -31,7 +30,6 @@ local volume_icon = sbar.add("item", "widgets.volume2", {
     width = 25,
     align = "left",
     font = {
-      style = settings.font.style_map["Regular"],
       size = 14.0,
     },
   },

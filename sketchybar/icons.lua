@@ -8,6 +8,11 @@ local icons = {
     gear = "􀍟",
     cpu = "􀫥",
     clipboard = "􀉄",
+    pomodoro = {
+      work = "􀐭",
+      ["break"] = "􀬾",
+      paused = "􀐮",
+    },
 
     switch = {
       on = "􁏮",
@@ -19,7 +24,12 @@ local icons = {
       _33="􀊥",
       _10="􀊡",
       _0="􀊣",
-    },
+    },		
+    temperature = {
+			_66 = "􁏄",
+			_33 = "􀇬",
+			_0 = "􁏃",
+		},
     battery = {
       _100 = "􀛨",
       _75 = "􀺸",
@@ -78,9 +88,14 @@ local icons = {
       router = "Missing Icon"
     },
     media = {
-      back = "",
-      forward = "",
-      play_pause = "",
+      back = "",
+      forward = "",
+      play_pause = "",
+    },
+    pomodoro = {
+      work = "󱎫",
+      ["break"] = "󰻂",
+      paused = "󱎺",
     },
   },
 }
