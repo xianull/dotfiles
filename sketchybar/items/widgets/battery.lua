@@ -11,20 +11,25 @@ local battery = sbar.add("item", "widgets.battery", {
   },
   label = { font = { family = settings.font.numbers } },
   update_freq = 180,
-  popup = { align = "center" }
+  popup = { align = "center", height = 24 }
 })
 
 local remaining_time = sbar.add("item", {
   position = "popup." .. battery.name,
   icon = {
-    string = "Time remaining:",
-    width = 100,
-    align = "left"
+    string = "Remaining",
+    color = colors.grey,
+    font = { size = 11.0 },
+    width = 80,
+    align = "left",
+    padding_left = 8,
   },
   label = {
-    string = "??:??h",
-    width = 100,
-    align = "right"
+    string = "...",
+    width = 80,
+    align = "right",
+    font = { size = 11.0 },
+    padding_right = 8,
   },
 })
 
@@ -89,11 +94,4 @@ battery:subscribe("mouse.clicked", function(env)
   end
 end)
 
-sbar.add("bracket", "widgets.battery.bracket", { battery.name }, {
-  background = { color = colors.bg1 }
-})
-
-sbar.add("item", "widgets.battery.padding", {
-  position = "right",
-  width = settings.group_paddings
-})
+-- Bracket and padding managed by volume.lua (shared volume+battery bracket)

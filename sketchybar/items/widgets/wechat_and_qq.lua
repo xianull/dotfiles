@@ -1,5 +1,4 @@
 local icons = require("icons")
-local icons_map = require("helpers.app_icons")
 local colors = require("colors")
 local settings = require("settings")
 
@@ -8,8 +7,7 @@ local M = {}
 M.qq = sbar.add("item", "widgets.qq", {
 	position = "right",
 	icon = {
-		font = "sketchybar-app-font:Regular:16.0",
-		-- color = colors.black,
+		font = { family = settings.font.text, size = 16.0 },
 	},
 	label = { font = { family = settings.font.numbers } },
 	update_freq = 5,
@@ -19,7 +17,7 @@ M.qq = sbar.add("item", "widgets.qq", {
 M.wechat = sbar.add("item", "widgets.wechat", {
 	position = "right",
 	icon = {
-		font = "sketchybar-app-font:Regular:19.0",
+		font = { family = settings.font.text, size = 19.0 },
 	},
 	label = { font = { family = settings.font.numbers } },
 	update_freq = 5,
@@ -30,7 +28,12 @@ local wechat_qq_bracket = sbar.add("bracket", "widgets.wechat_qq.bracket", {
 	M.qq.name,
 	M.wechat.name,
 }, {
-	background = { color = colors.bg1 },
+	background = {
+		color = colors.with_alpha(colors.bg1, 0.8),
+		border_color = colors.with_alpha(colors.bg2, 0.8),
+		border_width = 2,
+		corner_radius = 9,
+	},
 })
 
 -- Spacing after the group (consistent with other widgets)
@@ -41,8 +44,7 @@ sbar.add("item", "widgets.wechat_qq.padding", {
 
 M.wechat:subscribe({ "routine", "power_source_change", "system_woke" }, function()
 	sbar.exec("lsappinfo -all list | grep wechat", function(wechat_notify)
-		-- local icon = "󰘑"
-		local icon = icons_map["微信"]
+		local icon = icons.wechat
 		local label = ""
 
 		local notify_num = wechat_notify:match('"StatusLabel"=%{ "label"="?(.-)"? %}')
@@ -71,8 +73,7 @@ end)
 
 M.qq:subscribe({ "routine", "power_source_change", "system_woke" }, function()
 	sbar.exec("lsappinfo -all list | grep qq", function(qq_notify)
-		-- local icon = "󰘅"
-		local icon = icons_map["QQ"]
+		local icon = icons.qq
 		local label = ""
 
 		local notify_num = qq_notify:match('"StatusLabel"=%{ "label"="?(.-)"? %}')

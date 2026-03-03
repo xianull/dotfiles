@@ -13,8 +13,8 @@ for i = 1, 10, 1 do
       string = i,
       padding_left = 15,
       padding_right = 8,
-      color = colors.white,
-      highlight_color = colors.red,
+      color = colors.grey,
+      highlight_color = colors.white,
     },
     label = {
       padding_right = 20,
@@ -26,25 +26,16 @@ for i = 1, 10, 1 do
     padding_right = 1,
     padding_left = 1,
     background = {
-      color = colors.bg1,
-      border_width = 1,
+      color = colors.with_alpha(colors.bg1, 0.8),
+      border_width = 2,
       height = 26,
-      border_color = colors.black,
+      border_color = colors.with_alpha(colors.bg2, 0.8),
+      corner_radius = 9,
     },
     popup = { background = { border_width = 5, border_color = colors.black } }
   })
 
   spaces[i] = space
-
-  -- Single item bracket for space items to achieve double border on highlight
-  local space_bracket = sbar.add("bracket", { space.name }, {
-    background = {
-      color = colors.transparent,
-      border_color = colors.bg2,
-      height = 28,
-      border_width = 2
-    }
-  })
 
   -- Padding space
   sbar.add("space", "space.padding." .. i, {
@@ -68,15 +59,16 @@ for i = 1, 10, 1 do
 
   space:subscribe("space_change", function(env)
     local selected = env.SELECTED == "true"
-    local color = selected and colors.grey or colors.bg2
-    space:set({
-      icon = { highlight = selected, },
-      label = { highlight = selected },
-      background = { border_color = selected and colors.black or colors.bg2 }
-    })
-    space_bracket:set({
-      background = { border_color = selected and colors.grey or colors.bg2 }
-    })
+    sbar.animate("tanh", 10, function()
+      space:set({
+        icon = { highlight = selected, color = selected and colors.white or colors.grey },
+        label = { highlight = selected },
+        background = {
+          color = selected and colors.with_alpha(colors.bg2, 0.8) or colors.with_alpha(colors.bg1, 0.8),
+          border_color = selected and colors.grey or colors.with_alpha(colors.bg2, 0.8),
+        },
+      })
+    end)
   end)
 
   space:subscribe("mouse.clicked", function(env)
@@ -147,7 +139,7 @@ spaces_indicator:subscribe("swap_menus_and_spaces", function(env)
 end)
 
 spaces_indicator:subscribe("mouse.entered", function(env)
-  sbar.animate("tanh", 30, function()
+  sbar.animate("tanh", 10, function()
     spaces_indicator:set({
       background = {
         color = { alpha = 1.0 },
@@ -160,7 +152,7 @@ spaces_indicator:subscribe("mouse.entered", function(env)
 end)
 
 spaces_indicator:subscribe("mouse.exited", function(env)
-  sbar.animate("tanh", 30, function()
+  sbar.animate("tanh", 10, function()
     spaces_indicator:set({
       background = {
         color = { alpha = 0.0 },
@@ -175,3 +167,16 @@ end)
 spaces_indicator:subscribe("mouse.clicked", function(env)
   sbar.trigger("swap_menus_and_spaces")
 end)
+
+-- Shared bracket wrapping all spaces + indicator
+sbar.add("bracket", "spaces.bracket", {
+  '/space\\..*/',
+  spaces_indicator.name,
+}, {
+  background = {
+    color = colors.with_alpha(colors.bg1, 0.8),
+    border_color = colors.with_alpha(colors.bg2, 0.8),
+    border_width = 2,
+    corner_radius = 9,
+  },
+})

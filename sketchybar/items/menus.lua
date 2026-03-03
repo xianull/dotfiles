@@ -34,7 +34,7 @@ for i = 1, max_items, 1 do
 end
 
 sbar.add("bracket", { '/menu\\..*/' }, {
-  background = { color = colors.bg1 }
+  background = { color = colors.with_alpha(colors.bg1, 0.8) }
 })
 
 local menu_padding = sbar.add("item", "menu.padding", {

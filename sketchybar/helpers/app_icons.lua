@@ -105,6 +105,7 @@ return {
 	["GoLand"] = ":goland:",
 	["Chromium"] = ":google_chrome:",
 	["Google Chrome"] = ":google_chrome:",
+	["Google Chrome Beta"] = ":google_chrome:",
 	["Google Chrome Canary"] = ":google_chrome:",
 	["Grammarly Editor"] = ":grammarly:",
 	["Home Assistant"] = ":home_assistant:",

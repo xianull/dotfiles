@@ -10,7 +10,7 @@ local icons = {
     clipboard = "􀉄",
     pomodoro = {
       work = "􀐭",
-      ["break"] = "􀬾",
+      ["break"] = "􀸙",
       paused = "􀐮",
     },
 
@@ -50,6 +50,21 @@ local icons = {
       forward = "􀊌",
       play_pause = "􀊈",
     },
+    qq = "󰘅",
+    wechat = "󰘑",
+    audio = {
+      airpods = "􀪷",
+      airpods_pro = "􀪷",
+      airpods_max = "􀪶",
+      headphones = "􀋋",
+      speaker = "􀊠",
+      iphone = "􀓱",
+      ipad = "􀡚",
+      macbook = "􀟛",
+      display = "􀆿",
+      beats = "􀪷",
+      default = "􀊠",
+    },
   },
 
   -- Alternative NerdFont icons
@@ -59,7 +74,7 @@ local icons = {
     apple = "",
     gear = "",
     cpu = "",
-    clipboard = "Missing Icon",
+    clipboard = "􀉄",
 
     switch = {
       on = "󱨥",
@@ -92,10 +107,25 @@ local icons = {
       forward = "",
       play_pause = "",
     },
+    qq = "󰘅",
+    wechat = "󰘑",
     pomodoro = {
       work = "󱎫",
       ["break"] = "󰻂",
       paused = "󱎺",
+    },
+    audio = {
+      airpods = "󰋜",
+      airpods_pro = "󰋜",
+      airpods_max = "󰋝",
+      headphones = "󰋋",
+      speaker = "󰓃",
+      iphone = "󰀲",
+      ipad = "󰀳",
+      macbook = "󰀂",
+      display = "󰍹",
+      beats = "󰋜",
+      default = "󰕾",
     },
   },
 }
