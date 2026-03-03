@@ -1,7 +1,6 @@
 # Font
 font-family = "Fira Code"
 font-size = 16
-
 # Window
 window-decoration = false
 window-padding-x = 4
