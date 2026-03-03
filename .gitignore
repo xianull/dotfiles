@@ -1,8 +1,18 @@
 tmux/plugins/tpm
+
 # Spicetify 缓存与备份
 spicetify/Backup/
 spicetify/Extracted/
 spicetify/config-xp.ini.bak
+spicetify/CustomApps/*-tmp/
+spicetify/CustomApps/*.zip
+
+# iTerm2 sockets
+iterm2/sockets/
+
+# Raycast AI cache (keep directory structure)
+raycast/ai/*
+!raycast/ai/.gitkeep
 
 # 系统垃圾
 .DS_Store
