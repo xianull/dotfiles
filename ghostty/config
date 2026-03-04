@@ -1,5 +1,9 @@
+# Terminal type (use xterm-256color for better SSH compatibility)
+term = xterm-256color
+
 # Font
 font-family = Fira Code
+font-family = "LXGW WenKai Mono"
 font-size = 16
 # Window
 window-decoration = true

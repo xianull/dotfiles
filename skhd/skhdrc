@@ -106,4 +106,4 @@ lalt - n : yabai -m window --insert south; skhd -k "cmd - n"
 # Toggle sketchybar
 shift + lalt - space : sketchybar --bar hidden=toggle
 # 预设向下插入，然后打开 kitty
-lalt - return :  open -na kitty
+lalt - return :  open -na ghostty

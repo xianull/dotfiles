@@ -162,7 +162,7 @@ export PATH="/Users/xianull/.antigravity/antigravity/bin:$PATH"
 export PATH="/opt/homebrew/opt/node@22/bin:$PATH"
 
 
-alias ssh="kitty +kitten ssh"
+# alias ssh="kitty +kitten ssh"
 alias spfix="spicetify upgrade && spicetify backup apply"  
 
 # Claude Code environment variables (added by setup script)
