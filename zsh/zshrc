@@ -170,3 +170,14 @@ export LLM_API_KEY="sk-jueqlvofI8Za8NAhupzEFBNdjRogtBjyYJU6m7mVqNjLsvjE"
 export SILICONFLOW_API_KEY="sk-exblytzlrwicsyzhbstkfiogeuxofxxtmrmaxvbidswzirad"
 # CCG multi-model collaboration system
 export PATH="/Users/xianull/.claude/bin:$PATH"
+
+# OpenClaw Completion
+source "/Users/xianull/.openclaw/completions/openclaw.zsh"
+
+# bun completions
+[ -s "/Users/xianull/.bun/_bun" ] && source "/Users/xianull/.bun/_bun"
+
+# Added by Antigravity
+export PATH="/Users/xianull/.antigravity/antigravity/bin:$PATH"
+
+. "$HOME/.local/bin/env"

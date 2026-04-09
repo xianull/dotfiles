@@ -1,4 +1,8 @@
-tmux/plugins/tpm
+# Tmux plugins (managed by TPM)
+tmux/plugins/
+
+# Sketchybar references (nested git repos)
+sketchybar/dotfiles/
 
 # Spicetify 缓存与备份
 spicetify/Backup/

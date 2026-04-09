@@ -5,13 +5,16 @@ term = xterm-256color
 font-family = Fira Code
 font-family = "LXGW WenKai Mono"
 font-size = 16
+
 # Window
 window-decoration = true
 window-padding-x = 4
 window-padding-y = 4
 background-opacity = 0.9
+confirm-close-surface = false
 background-blur-radius = 30
-macos-titlebar-style = tabs
+macos-titlebar-style = hidden
+window-tab-bar = true
 
 
 # Gruvbox Dark Theme
