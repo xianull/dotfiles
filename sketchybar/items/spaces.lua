@@ -117,10 +117,12 @@ space_window_observer:subscribe("space_windows_change", function(env)
   local icon_line = ""
   local no_app = true
   for app, count in pairs(env.INFO.apps) do
-    no_app = false
-    local lookup = app_icons[app]
-    local icon = ((lookup == nil) and app_icons["Default"] or lookup)
-    icon_line = icon_line .. icon
+    if app ~= "Dropover" then
+      no_app = false
+      local lookup = app_icons[app]
+      local icon = ((lookup == nil) and app_icons["Default"] or lookup)
+      icon_line = icon_line .. icon
+    end
   end
 
   if (no_app) then

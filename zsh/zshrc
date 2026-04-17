@@ -142,8 +142,9 @@ export HOMEBREW_BOTTLE_DOMAIN=https://mirrors.aliyun.com/homebrew/homebrew-bottl
 export HOMEBREW_API_DOMAIN=https://mirrors.aliyun.com/homebrew/homebrew-bottles/api
 
 
-export http_proxy=http://127.0.0.1:7890
-export https_proxy=http://127.0.0.1:7890
+# Proxy via Clash Verge TUN mode (no explicit proxy needed)
+# export http_proxy=http://127.0.0.1:7890
+# export https_proxy=http://127.0.0.1:7890
 
 
 # pnpm
@@ -163,7 +164,12 @@ export PATH="/opt/homebrew/opt/node@22/bin:$PATH"
 
 
 # alias ssh="kitty +kitten ssh"
-alias spfix="spicetify upgrade && spicetify backup apply"  
+alias spfix="spicetify upgrade && spicetify backup apply"
+alias v="nvim"
+# SSH aliases
+alias h200="ssh jcw@192.168.112.113"
+alias h200proxy="ssh -f -N -C -o ServerAliveInterval=60 -o ExitOnForwardFailure=yes -R 17891:127.0.0.1:7890 jcw@192.168.112.113"
+alias 4090="ssh jcw@192.198.112.108 -p 2212"
 
 # Claude Code environment variables (added by setup script)
 export LLM_API_KEY="sk-jueqlvofI8Za8NAhupzEFBNdjRogtBjyYJU6m7mVqNjLsvjE"

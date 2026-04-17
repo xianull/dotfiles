@@ -1,0 +1,215 @@
+{
+  "version": "1.0.0",
+  "lastScanned": 1776434859391,
+  "projectRoot": "/Users/xianull/dotfiles",
+  "techStack": {
+    "languages": [],
+    "frameworks": [],
+    "packageManager": null,
+    "runtime": null
+  },
+  "build": {
+    "buildCommand": null,
+    "testCommand": null,
+    "lintCommand": null,
+    "devCommand": null,
+    "scripts": {}
+  },
+  "conventions": {
+    "namingStyle": null,
+    "importStyle": null,
+    "testPattern": null,
+    "fileOrganization": null
+  },
+  "structure": {
+    "isMonorepo": false,
+    "workspaces": [],
+    "mainDirectories": [],
+    "gitBranches": null
+  },
+  "customNotes": [],
+  "directoryMap": {
+    "aerospace": {
+      "path": "aerospace",
+      "purpose": null,
+      "fileCount": 1,
+      "lastAccessed": 1776434859378,
+      "keyFiles": []
+    },
+    "borders": {
+      "path": "borders",
+      "purpose": null,
+      "fileCount": 1,
+      "lastAccessed": 1776434859378,
+      "keyFiles": [
+        "bordersrc"
+      ]
+    },
+    "btop": {
+      "path": "btop",
+      "purpose": null,
+      "fileCount": 1,
+      "lastAccessed": 1776434859378,
+      "keyFiles": [
+        "btop.conf"
+      ]
+    },
+    "conda": {
+      "path": "conda",
+      "purpose": null,
+      "fileCount": 1,
+      "lastAccessed": 1776434859378,
+      "keyFiles": [
+        "condarc"
+      ]
+    },
+    "ghostty": {
+      "path": "ghostty",
+      "purpose": null,
+      "fileCount": 1,
+      "lastAccessed": 1776434859378,
+      "keyFiles": [
+        "config"
+      ]
+    },
+    "git": {
+      "path": "git",
+      "purpose": null,
+      "fileCount": 1,
+      "lastAccessed": 1776434859378,
+      "keyFiles": [
+        "config"
+      ]
+    },
+    "iterm2": {
+      "path": "iterm2",
+      "purpose": null,
+      "fileCount": 0,
+      "lastAccessed": 1776434859378,
+      "keyFiles": []
+    },
+    "kitty": {
+      "path": "kitty",
+      "purpose": null,
+      "fileCount": 1,
+      "lastAccessed": 1776434859378,
+      "keyFiles": [
+        "kitty.conf"
+      ]
+    },
+    "neofetch": {
+      "path": "neofetch",
+      "purpose": null,
+      "fileCount": 1,
+      "lastAccessed": 1776434859378,
+      "keyFiles": [
+        "config.conf"
+      ]
+    },
+    "npm": {
+      "path": "npm",
+      "purpose": null,
+      "fileCount": 1,
+      "lastAccessed": 1776434859378,
+      "keyFiles": [
+        "npmrc"
+      ]
+    },
+    "nvim": {
+      "path": "nvim",
+      "purpose": null,
+      "fileCount": 2,
+      "lastAccessed": 1776434859379,
+      "keyFiles": [
+        "init.lua",
+        "lazy-lock.json"
+      ]
+    },
+    "raycast": {
+      "path": "raycast",
+      "purpose": null,
+      "fileCount": 0,
+      "lastAccessed": 1776434859379,
+      "keyFiles": []
+    },
+    "sketchybar": {
+      "path": "sketchybar",
+      "purpose": null,
+      "fileCount": 10,
+      "lastAccessed": 1776434859379,
+      "keyFiles": [
+        "bar.lua",
+        "colors.lua",
+        "default.lua",
+        "icons.lua",
+        "init.lua"
+      ]
+    },
+    "skhd": {
+      "path": "skhd",
+      "purpose": null,
+      "fileCount": 1,
+      "lastAccessed": 1776434859379,
+      "keyFiles": [
+        "skhdrc"
+      ]
+    },
+    "spicetify": {
+      "path": "spicetify",
+      "purpose": null,
+      "fileCount": 1,
+      "lastAccessed": 1776434859379,
+      "keyFiles": [
+        "config-xpui.ini"
+      ]
+    },
+    "tmux": {
+      "path": "tmux",
+      "purpose": null,
+      "fileCount": 1,
+      "lastAccessed": 1776434859379,
+      "keyFiles": []
+    },
+    "yabai": {
+      "path": "yabai",
+      "purpose": null,
+      "fileCount": 2,
+      "lastAccessed": 1776434859380,
+      "keyFiles": [
+        "init.sh",
+        "yabairc"
+      ]
+    },
+    "zsh": {
+      "path": "zsh",
+      "purpose": null,
+      "fileCount": 3,
+      "lastAccessed": 1776434859381,
+      "keyFiles": [
+        "p10k.zsh",
+        "zprofile",
+        "zshrc"
+      ]
+    },
+    "sketchybar/helpers": {
+      "path": "sketchybar/helpers",
+      "purpose": "Helper functions",
+      "fileCount": 6,
+      "lastAccessed": 1776434859382,
+      "keyFiles": [
+        "app_icons.lua",
+        "color_schemes.lua",
+        "default_font.lua"
+      ]
+    }
+  },
+  "hotPaths": [
+    {
+      "path": "ghostty/config",
+      "accessCount": 2,
+      "lastAccessed": 1776435698300,
+      "type": "file"
+    }
+  ],
+  "userDirectives": []
+}
