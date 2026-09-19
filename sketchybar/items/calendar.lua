@@ -8,21 +8,17 @@ local cal = sbar.add("item", "calendar", {
   icon = { drawing = false },
   label = {
     color = colors.white,
-    padding_right = 8,
-    padding_left = 8,
+    padding_right = 10,
+    padding_left = 10,
     align = "right",
-    font = { family = settings.font.numbers },
+    font = { family = settings.font.numbers, size = 12.0 },
   },
   position = "right",
   update_freq = 30,
   padding_left = 1,
   padding_right = 1,
-  background = {
-    color = colors.with_alpha(colors.bg1, 0.8),
-    border_color = colors.with_alpha(colors.bg2, 0.8),
-    border_width = 2,
-    corner_radius = 9,
-  },
+  -- 背景交给 items/init.lua 的 bg_cal 胶囊，避免双重底
+  background = { drawing = false },
   click_script = "open -a 'Calendar'"
 })
 

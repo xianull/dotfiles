@@ -11,12 +11,56 @@ spicetify/config-xp.ini.bak
 spicetify/CustomApps/*-tmp/
 spicetify/CustomApps/*.zip
 
+# Herdr runtime (if ever committed as a full dir)
+herdr/*.log
+herdr/*.sock
+herdr/session.json
+herdr/.plugins.lock
+
+# Agent skills content is reinstalled via skills/install.sh
+skills/vendor/
+
+# Pi secrets / runtime (plugin manifests live under pi/ and are tracked)
+pi/auth.json
+pi/models.json
+pi/models-store.json
+pi/sessions/
+pi/extensions/
+pi/npm/node_modules/
+pi/trust.json
+
 # iTerm2 sockets
 iterm2/sockets/
 
 # Raycast AI cache (keep directory structure)
 raycast/ai/*
 !raycast/ai/.gitkeep
+
+# Raycast local runtime (token, installed extensions, compile cache)
+raycast/aster-endpoint.json
+raycast/extensions/
+raycast/node-compile-cache/
+
+# OMC runtime (sessions, state, nested per-tool dirs)
+.omc/
+**/.omc/
+
+# Shell secrets (sourced from zshrc if present)
+zsh/secrets.zsh
+
+# Python cache
+**/__pycache__/
+*.py[cod]
+
+# Backups / scratch
+*.bak
+.tmp_icons/
+
+# Compiled sketchybar helpers (rebuild via make)
+sketchybar/**/bin/
+
+# Otty internal marker
+otty/recipes/.migrated-from-statedb
 
 # 系统垃圾
 .DS_Store

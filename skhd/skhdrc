@@ -1,14 +1,20 @@
 ## Navigation (lalt - ...)
-# Space Navigation (four spaces per display): lalt - {1, 2, 3, 4}
-lalt - 1 : SPACES=($(yabai -m query --displays --display | jq '.spaces[]')) && [[ -n $SPACES[1] ]] && yabai -m space --focus $SPACES[1]
-lalt - 2 : SPACES=($(yabai -m query --displays --display | jq '.spaces[]')) && [[ -n $SPACES[2] ]] && yabai -m space --focus $SPACES[2]
-lalt - 3 : SPACES=($(yabai -m query --displays --display | jq '.spaces[]')) && [[ -n $SPACES[3] ]] && yabai -m space --focus $SPACES[3]
-lalt - 4 : SPACES=($(yabai -m query --displays --display | jq '.spaces[]')) && [[ -n $SPACES[4] ]] && yabai -m space --focus $SPACES[4]
-lalt - 5 : SPACES=($(yabai -m query --displays --display | jq '.spaces[]')) && [[ -n $SPACES[5] ]] && yabai -m space --focus $SPACES[5]
-lalt - 6 : SPACES=($(yabai -m query --displays --display | jq '.spaces[]')) && [[ -n $SPACES[6] ]] && yabai -m space --focus $SPACES[6]
-lalt - 7: SPACES=($(yabai -m query --displays --display | jq '.spaces[]')) && [[ -n $SPACES[7] ]] && yabai -m space --focus $SPACES[7]
+# Space Navigation: global Mission Control indices 1-9 (works on any display).
+# NOTE: skhd runs commands with bash; do NOT use zsh-style 1-based arrays here.
+# Previous per-display indexing broke secondary monitors (e.g. only spaces 8-9).
+lalt - 1 : yabai -m space --focus 1
+lalt - 2 : yabai -m space --focus 2
+lalt - 3 : yabai -m space --focus 3
+lalt - 4 : yabai -m space --focus 4
+lalt - 5 : yabai -m space --focus 5
+lalt - 6 : yabai -m space --focus 6
+lalt - 7 : yabai -m space --focus 7
+lalt - 8 : yabai -m space --focus 8
+lalt - 9 : yabai -m space --focus 9
 lalt - q : yabai -m window --focus prev || yabai -m window --focus last
 lalt - tab : yabai -m space --focus recent
+# Last focused window. Not lalt-x — tmux binds M-x to kill-pane.
+lalt - a : yabai -m window --focus recent
 # Window Navigation (through display borders): lalt - {j, k, i, l} (左下上右)
 lalt - j    : yabai -m window --focus west  || yabai -m display --focus west
 lalt - k    : yabai -m window --focus south || yabai -m display --focus south
@@ -38,27 +44,17 @@ shift + lalt - l : yabai -m window --warp east || $(yabai -m window --display ea
 # Toggle split orientation of the selected windows node: shift + lalt - s
 shift + lalt - s : yabai -m window --toggle split
 
-# Moving windows between spaces: shift + lalt - {1, 2, 3, 4, p, n } (Assumes 4 Spaces Max per Display)
-shift + lalt - 1 : SPACES=($(yabai -m query --displays --display | jq '.spaces[]')) && [[ -n $SPACES[1] ]] \
-                  && yabai -m window --space $SPACES[1]
-
-shift + lalt - 2 : SPACES=($(yabai -m query --displays --display | jq '.spaces[]')) && [[ -n $SPACES[2] ]] \
-                  && yabai -m window --space $SPACES[2]
-
-shift + lalt - 3 : SPACES=($(yabai -m query --displays --display | jq '.spaces[]')) && [[ -n $SPACES[3] ]] \
-                  && yabai -m window --space $SPACES[3]
-
-shift + lalt - 4 : SPACES=($(yabai -m query --displays --display | jq '.spaces[]')) && [[ -n $SPACES[4] ]] \
-                  && yabai -m window --space $SPACES[4]
-
-shift + lalt - 5 : SPACES=($(yabai -m query --displays --display | jq '.spaces[]')) && [[ -n $SPACES[5] ]] \
-                  && yabai -m window --space $SPACES[5]
-
-shift + lalt - 6 : SPACES=($(yabai -m query --displays --display | jq '.spaces[]')) && [[ -n $SPACES[6] ]] \
-                  && yabai -m window --space $SPACES[6]
-
-shift + lalt - 7 : SPACES=($(yabai -m query --displays --display | jq '.spaces[]')) && [[ -n $SPACES[7] ]] \
-                  && yabai -m window --space $SPACES[7]
+# Moving windows between spaces (global 1-9), then follow focus.
+# Works from any display, including secondary monitors.
+shift + lalt - 1 : yabai -m window --space 1 && yabai -m space --focus 1
+shift + lalt - 2 : yabai -m window --space 2 && yabai -m space --focus 2
+shift + lalt - 3 : yabai -m window --space 3 && yabai -m space --focus 3
+shift + lalt - 4 : yabai -m window --space 4 && yabai -m space --focus 4
+shift + lalt - 5 : yabai -m window --space 5 && yabai -m space --focus 5
+shift + lalt - 6 : yabai -m window --space 6 && yabai -m space --focus 6
+shift + lalt - 7 : yabai -m window --space 7 && yabai -m space --focus 7
+shift + lalt - 8 : yabai -m window --space 8 && yabai -m space --focus 8
+shift + lalt - 9 : yabai -m window --space 9 && yabai -m space --focus 9
 
 shift + lalt - p : yabai -m window --space prev && yabai -m space --focus prev
 shift + lalt - n : yabai -m window --space next && yabai -m space --focus next
@@ -69,10 +65,10 @@ shift + lalt - y : yabai -m space --mirror y-axis
 
 ## Stacks (shift + ctrl - ...)
 # Add the active window to the window or stack to the {direction}: shift + ctrl - {j, k, i, l} (左下上右)
-shift + ctrl - j    : yabai -m window  west --stack $(yabai -m query --windows --window | jq -r '.id')
-shift + ctrl - k    : yabai -m window south --stack $(yabai -m query --windows --window | jq -r '.id')
-shift + ctrl - i    : yabai -m window north --stack $(yabai -m query --windows --window | jq -r '.id')
-shift + ctrl - l    : yabai -m window  east --stack $(yabai -m query --windows --window | jq -r '.id')
+shift + ctrl - j    : yabai -m window  west --stack $(yabai -m query --windows --window | jq -r '.id'); sketchybar --trigger window_focus
+shift + ctrl - k    : yabai -m window south --stack $(yabai -m query --windows --window | jq -r '.id'); sketchybar --trigger window_focus
+shift + ctrl - i    : yabai -m window north --stack $(yabai -m query --windows --window | jq -r '.id'); sketchybar --trigger window_focus
+shift + ctrl - l    : yabai -m window  east --stack $(yabai -m query --windows --window | jq -r '.id'); sketchybar --trigger window_focus
 
 # Stack Navigation: shift + ctrl - {n, p}
 shift + ctrl - n : yabai -m window --focus stack.next
@@ -93,10 +89,11 @@ ctrl + lalt - g : yabai -m space --toggle padding; yabai -m space --toggle gap
 
 ## Unstack
 # Remove focused window from stack
-lalt - u : yabai -m window --toggle float && yabai -m window --toggle float
+lalt - u : yabai -m window --toggle float && yabai -m window --toggle float; sketchybar --trigger window_focus
 
-# New window in hor./ vert. splits for all applications with yabai
-lalt - s : yabai -m window --insert east;  skhd -k "cmd - n"
+# New window in hor./ vert. splits for all applications with yabai.
+# NOTE: do NOT use lalt-s here — tmux binds M-s (⌥S) to session choose-tree.
+lalt - e : yabai -m window --insert east;  skhd -k "cmd - n"
 lalt - n : yabai -m window --insert south; skhd -k "cmd - n"
 
 # Toggle sketchybar
@@ -111,5 +108,23 @@ ctrl + lalt - r : brew services restart yabai
 # Toggle window border
 ctrl + lalt - b : yabai -m config window_border ==off && yabai -m config window_border on || yabai -m config window_border off
 
-# 预设向下插入，然后打开 kitty
-lalt - return :  open -na ghostty
+# 预设向下插入，然后打开 ghostty。
+# Obsidian 里放行 Opt+Enter，留给 Excalidraw MindMap Builder 添加同级节点。
+lalt - return [
+    "Obsidian" ~
+    * : open -na ghostty
+]
+
+# WeChat scratchpad: show on current space; hide back to space 6
+lalt - w : ~/.config/yabai/scratchpad-wechat.sh
+
+# Displays: external = spaces 1-7, laptop = 8-9 (stacked vertically).
+# Ping-pong the other display's currently visible space.
+lalt - d : yabai -m display --focus recent
+# Send focused window to the other display and follow.
+shift + lalt - d : yabai -m window --display recent && yabai -m display --focus recent
+# Move the current space onto the other display (each display must keep ≥1 space).
+ctrl + lalt - d : yabai -m space --display recent
+# Cycle spaces on THIS display only (main 1-7, laptop 8-9). comma / period.
+lalt - 0x2B : ~/.config/yabai/space_on_display.sh prev
+lalt - 0x2F : ~/.config/yabai/space_on_display.sh next

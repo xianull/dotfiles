@@ -1,6 +1,7 @@
 local icons = require("icons")
 local colors = require("colors")
 local settings = require("settings")
+local coerce = require("helpers.coerce")
 
 local battery = sbar.add("item", "widgets.battery", {
   position = "right",
@@ -39,6 +40,7 @@ battery:subscribe({"routine", "power_source_change", "system_woke"}, function()
     local icon = "!"
     local label = "?"
 
+    batt_info = coerce.text(batt_info)
     local found, _, charge = batt_info:find("(%d+)%%")
     if found then
       charge = tonumber(charge)
@@ -87,6 +89,7 @@ battery:subscribe("mouse.clicked", function(env)
 
   if drawing == "off" then
     sbar.exec("pmset -g batt", function(batt_info)
+      batt_info = coerce.text(batt_info)
       local found, _, remaining = batt_info:find(" (%d+:%d+) remaining")
       local label = found and remaining .. "h" or "No estimate"
       remaining_time:set( { label = label })

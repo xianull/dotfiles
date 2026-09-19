@@ -1,0 +1,82 @@
+# Gruvbox Material Rich — custom btop theme
+# Based on sainnhe/gruvbox-material palette, enhanced with 3-stop gradients
+# for richer visual depth in graphs and meters.
+
+# Main background — soft material dark (not pitch black)
+theme[main_bg]="#1d2021"
+
+# Main text — warm cream
+theme[main_fg]="#d4be98"
+
+# Box titles — brighter cream for emphasis
+theme[title]="#ddc7a1"
+
+# Keyboard shortcut highlight — soft aqua (less harsh than red)
+theme[hi_fg]="#7daea3"
+
+# Selected item background — warm yellow
+theme[selected_bg]="#45403d"
+
+# Selected item foreground — bright warm yellow
+theme[selected_fg]="#d8a657"
+
+# Inactive/disabled text — muted gray
+theme[inactive_fg]="#665c54"
+
+# Text over graphs (uptime, scale) — medium cream
+theme[graph_text]="#a89984"
+
+# Proc box misc (mini cpu graph etc.) — soft green
+theme[proc_misc]="#a9b665"
+
+# Box outlines — muted gray-brown for subtle borders
+theme[cpu_box]="#504945"
+theme[mem_box]="#504945"
+theme[net_box]="#504945"
+theme[proc_box]="#504945"
+theme[div_line]="#504945"
+
+# Temperature gradient: cool aqua -> orange -> hot red
+theme[temp_start]="#7daea3"
+theme[temp_mid]="#e78a4e"
+theme[temp_end]="#ea6962"
+
+# CPU gradient: fresh green -> amber -> red (classic load indicator)
+theme[cpu_start]="#a9b665"
+theme[cpu_mid]="#d8a657"
+theme[cpu_end]="#ea6962"
+
+# Memory free: green shades (good)
+theme[free_start]="#89b482"
+theme[free_mid]="#a9b665"
+theme[free_end]="#b8bb26"
+
+# Memory cached: cool aqua/blue shades
+theme[cached_start]="#7daea3"
+theme[cached_mid]="#89b482"
+theme[cached_end]="#a9b665"
+
+# Memory available: warm yellow shades
+theme[available_start]="#e78a4e"
+theme[available_mid]="#d8a657"
+theme[available_end]="#e9b143"
+
+# Memory used: warning gradient yellow -> orange -> red
+theme[used_start]="#d8a657"
+theme[used_mid]="#e78a4e"
+theme[used_end]="#ea6962"
+
+# Download gradient: purple -> pink (cool, distinct from upload)
+theme[download_start]="#7c6f64"
+theme[download_mid]="#d3869b"
+theme[download_end]="#e78a4e"
+
+# Upload gradient: aqua -> green (cool, distinct from download)
+theme[upload_start]="#7c6f64"
+theme[upload_mid]="#7daea3"
+theme[upload_end]="#a9b665"
+
+# Process list gradient: green -> yellow -> red (by resource use)
+theme[process_start]="#a9b665"
+theme[process_mid]="#d8a657"
+theme[process_end]="#ea6962"

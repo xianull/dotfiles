@@ -1,0 +1,23 @@
+#!/bin/zsh
+SERVER=${1:-192.168.112.111}
+SESSION=${2:-dev}
+
+cat > /tmp/tmux-dev-$SESSION.yaml <<YAML
+session_name: $SESSION
+start_directory: "$PWD"
+windows:
+  - window_name: main
+    layout: main-vertical
+    panes:
+      - claude
+      - ssh -t jcw@$SERVER "zsh -ic 'nvitop'"
+      - null
+    shell_command:
+      - tmux resize-pane -t 2 -D 12
+  - window_name: remote
+    layout: even-vertical
+    panes:
+      - ssh -C -o ServerAliveInterval=60 -R 17890:127.0.0.1:7890 jcw@$SERVER
+YAML
+
+exec tmuxp load /tmp/tmux-dev-$SESSION.yaml

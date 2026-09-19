@@ -1,0 +1,5 @@
+# Target agents for global skill install (-a)
+claude-code
+codex
+pi
+grok

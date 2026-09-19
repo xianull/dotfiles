@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # ==========================================================
-# 自动化安装脚本 (yabai, kitty, tmux, spicetify, zsh)
+# 自动化安装脚本 (yabai, kitty, tmux, spicetify, herdr, skills, pi, zsh)
 # ==========================================================
 
 DOTFILES="$HOME/dotfiles"
@@ -46,6 +46,24 @@ ln -sfn "$DOTFILES/tmux" "$HOME/.config/tmux"
 # spicetify
 ln -sfn "$DOTFILES/spicetify" "$HOME/.config/spicetify"
 
+# otty (terminal)
+ln -sfn "$DOTFILES/otty" "$HOME/.config/otty"
+
+# herdr (config only; session/logs stay local)
+mkdir -p "$HOME/.config/herdr"
+ln -sfn "$DOTFILES/herdr/config.toml" "$HOME/.config/herdr/config.toml"
+
+# pi agent settings + plugin package manifests
+# (auth.json / models.json / sessions / Otty extensions stay local)
+mkdir -p "$HOME/.pi/agent/npm"
+ln -sfn "$DOTFILES/pi/settings.json" "$HOME/.pi/agent/settings.json"
+ln -sfn "$DOTFILES/pi/npm/package.json" "$HOME/.pi/agent/npm/package.json"
+ln -sfn "$DOTFILES/pi/npm/package-lock.json" "$HOME/.pi/agent/npm/package-lock.json"
+if command -v npm &> /dev/null; then
+    (cd "$HOME/.pi/agent/npm" && npm install --omit=dev) \
+        || echo "⚠️ pi npm 插件安装失败，可稍后: cd ~/.pi/agent/npm && npm install"
+fi
+
 # 4. 字体安装
 echo "🔡 正在安装 SFMono Nerd Font 与 Sketchybar 字体..."
 mkdir -p "$HOME/Library/Fonts"
@@ -66,6 +84,15 @@ echo "🛠 正在初始化 Spicetify..."
 chmod +x "$DOTFILES/spicetify/CustomApps" &> /dev/null
 spicetify backup apply &> /dev/null || echo "⚠️ Spicetify 注入失败，可能需要手动重装 Spotify。"
 
+# 6. Agent skills (npx skills; 正文不进 git，按清单重装)
+if command -v npx &> /dev/null; then
+    echo "🧠 正在安装 agent skills..."
+    bash "$DOTFILES/skills/install.sh" || echo "⚠️ skills 安装失败，可稍后手动运行 ~/dotfiles/skills/install.sh"
+else
+    echo "⚠️ 未检测到 npx，跳过 skills 安装"
+fi
+
 echo "✅ 安装完成！"
 echo "👉 请运行 'source ~/.zshrc' 使配置立即生效。"
 echo "👉 如果是首次安装 yabai，请记得在系统设置中授予 '屏幕录制' 和 '辅助功能' 权限。"
+echo "👉 Claude 插件清单见 ~/dotfiles/claude/（需在 Claude Code 内按 marketplace 重装）。"

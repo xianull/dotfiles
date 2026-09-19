@@ -1,0 +1,15 @@
+session_name: dev
+start_directory: ./
+windows:
+  - window_name: main
+    layout: main-vertical
+    panes:
+      - claude
+      - ssh -t jcw@192.168.112.111 "zsh -ic 'nvitop'"
+      - null
+    shell_command:
+      - tmux resize-pane -t 2 -D 12
+  - window_name: remote
+    layout: even-vertical
+    panes:
+      - ssh -C -o ServerAliveInterval=60 -R 17890:127.0.0.1:7890 jcw@192.168.112.111

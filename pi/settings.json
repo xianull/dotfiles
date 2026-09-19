@@ -1,0 +1,16 @@
+{
+  "lastChangelogVersion": "0.85.1",
+  "theme": "dark",
+  "packages": [
+    "npm:pi-grok-cli",
+    "npm:pi-web-access",
+    "npm:pi-lens",
+    "npm:pi-subagents"
+  ],
+  "defaultProvider": "openlux-anthropic",
+  "defaultModel": "claude-sonnet-5",
+  "defaultThinkingLevel": "high",
+  "terminal": {
+    "showTerminalProgress": true
+  }
+}

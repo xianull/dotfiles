@@ -5,43 +5,45 @@ local app_icons = require("helpers.app_icons")
 
 local spaces = {}
 
+local cap = settings.capsule or {}
+local pill_r = 8
+
 for i = 1, 10, 1 do
   local space = sbar.add("space", "space." .. i, {
     space = i,
     icon = {
-      font = { family = settings.font.numbers },
+      font = { family = settings.font.numbers, size = 12.0 },
       string = i,
-      padding_left = 15,
-      padding_right = 8,
+      padding_left = 10,
+      padding_right = 6,
       color = colors.grey,
       highlight_color = colors.white,
     },
     label = {
-      padding_right = 20,
+      padding_right = 10,
       color = colors.grey,
       highlight_color = colors.white,
-      font = "sketchybar-app-font:Regular:16.0",
+      font = "sketchybar-app-font:Regular:14.0",
       y_offset = -1,
     },
     padding_right = 1,
     padding_left = 1,
     background = {
-      color = colors.with_alpha(colors.bg1, 0.8),
-      border_width = 2,
-      height = 26,
-      border_color = colors.with_alpha(colors.bg2, 0.8),
-      corner_radius = 9,
+      color = colors.transparent,
+      border_width = 0,
+      height = 22,
+      corner_radius = pill_r,
     },
-    popup = { background = { border_width = 5, border_color = colors.black } }
+    popup = { background = { border_width = 0, corner_radius = cap.corner_radius or 12 } }
   })
 
   spaces[i] = space
 
-  -- Padding space
+  -- 空间间距略收，减少左栏「稀」
   sbar.add("space", "space.padding." .. i, {
     space = i,
     script = "",
-    width = settings.group_paddings,
+    width = math.max(2, (settings.group_paddings or 5) - 2),
   })
 
   local space_popup = sbar.add("item", {
@@ -59,13 +61,22 @@ for i = 1, 10, 1 do
 
   space:subscribe("space_change", function(env)
     local selected = env.SELECTED == "true"
-    sbar.animate("tanh", 10, function()
+    -- 选中：轻蓝底 + 白字（贴系统强调）；动画更短更稳
+    sbar.animate("tanh", 8, function()
       space:set({
-        icon = { highlight = selected, color = selected and colors.white or colors.grey },
-        label = { highlight = selected },
+        icon = {
+          highlight = selected,
+          color = selected and colors.white or colors.grey,
+        },
+        label = {
+          highlight = selected,
+          color = selected and colors.white or colors.grey,
+        },
         background = {
-          color = selected and colors.with_alpha(colors.bg2, 0.8) or colors.with_alpha(colors.bg1, 0.8),
-          border_color = selected and colors.grey or colors.with_alpha(colors.bg2, 0.8),
+          color = selected
+            and colors.with_alpha(colors.blue or colors.bg2, 0.35)
+            or colors.transparent,
+          corner_radius = pill_r,
         },
       })
     end)
@@ -91,28 +102,6 @@ local space_window_observer = sbar.add("item", {
   updates = true,
 })
 
-local spaces_indicator = sbar.add("item", {
-  padding_left = -3,
-  padding_right = 0,
-  icon = {
-    padding_left = 8,
-    padding_right = 9,
-    color = colors.grey,
-    string = icons.switch.on,
-  },
-  label = {
-    width = 0,
-    padding_left = 0,
-    padding_right = 8,
-    string = "Spaces",
-    color = colors.bg1,
-  },
-  background = {
-    color = colors.with_alpha(colors.grey, 0.0),
-    border_color = colors.with_alpha(colors.bg1, 0.0),
-  }
-})
-
 space_window_observer:subscribe("space_windows_change", function(env)
   local icon_line = ""
   local no_app = true
@@ -128,57 +117,18 @@ space_window_observer:subscribe("space_windows_change", function(env)
   if (no_app) then
     icon_line = " —"
   end
-  sbar.animate("tanh", 10, function()
-    spaces[env.INFO.space]:set({ label = icon_line })
+  local sp = spaces[env.INFO.space]
+  if not sp then return end
+  sbar.animate("tanh", 8, function()
+    sp:set({ label = { string = icon_line } })
   end)
 end)
 
-spaces_indicator:subscribe("swap_menus_and_spaces", function(env)
-  local currently_on = spaces_indicator:query().icon.value == icons.switch.on
-  spaces_indicator:set({
-    icon = currently_on and icons.switch.off or icons.switch.on
-  })
-end)
-
-spaces_indicator:subscribe("mouse.entered", function(env)
-  sbar.animate("tanh", 10, function()
-    spaces_indicator:set({
-      background = {
-        color = { alpha = 1.0 },
-        border_color = { alpha = 1.0 },
-      },
-      icon = { color = colors.bg1 },
-      label = { width = "dynamic" }
-    })
-  end)
-end)
-
-spaces_indicator:subscribe("mouse.exited", function(env)
-  sbar.animate("tanh", 10, function()
-    spaces_indicator:set({
-      background = {
-        color = { alpha = 0.0 },
-        border_color = { alpha = 0.0 },
-      },
-      icon = { color = colors.grey },
-      label = { width = 0, }
-    })
-  end)
-end)
-
-spaces_indicator:subscribe("mouse.clicked", function(env)
-  sbar.trigger("swap_menus_and_spaces")
-end)
-
--- Shared bracket wrapping all spaces + indicator
+-- spaces 背景由 bg_left 统一提供
 sbar.add("bracket", "spaces.bracket", {
   '/space\\..*/',
-  spaces_indicator.name,
 }, {
   background = {
-    color = colors.with_alpha(colors.bg1, 0.8),
-    border_color = colors.with_alpha(colors.bg2, 0.8),
-    border_width = 2,
-    corner_radius = 9,
+    drawing = false,
   },
 })

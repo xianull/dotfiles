@@ -149,7 +149,7 @@ local function animate_detail(detail)
 		return
 	end
 
-	sbar.animate("tanh", 30, function()
+	sbar.animate("sin", 30, function()
 		M.media_artist:set({ label = { width = detail and "dynamic" or 0 } })
 		M.media_title:set({ label = { width = detail and "dynamic" or 0 } })
 		return

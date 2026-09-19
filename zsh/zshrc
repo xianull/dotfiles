@@ -52,7 +52,7 @@ ZSH_THEME="powerlevel10k/powerlevel10k"
 # DISABLE_LS_COLORS="true"
 
 # Uncomment the following line to disable auto-setting terminal title.
-# DISABLE_AUTO_TITLE="true"
+export DISABLE_AUTO_TITLE="true"
 
 # Uncomment the following line to enable command auto-correction.
 # ENABLE_CORRECTION="true"
@@ -172,13 +172,10 @@ alias h200proxy="ssh -f -N -C -o ServerAliveInterval=60 -o ExitOnForwardFailure=
 alias 4090="ssh jcw@192.198.112.108 -p 2212"
 
 # Claude Code environment variables (added by setup script)
-export LLM_API_KEY="sk-jueqlvofI8Za8NAhupzEFBNdjRogtBjyYJU6m7mVqNjLsvjE"
-export SILICONFLOW_API_KEY="sk-exblytzlrwicsyzhbstkfiogeuxofxxtmrmaxvbidswzirad"
+# API keys live in gitignored zsh/secrets.zsh
+[[ -f ~/dotfiles/zsh/secrets.zsh ]] && source ~/dotfiles/zsh/secrets.zsh
 # CCG multi-model collaboration system
 export PATH="/Users/xianull/.claude/bin:$PATH"
-
-# OpenClaw Completion
-source "/Users/xianull/.openclaw/completions/openclaw.zsh"
 
 # bun completions
 [ -s "/Users/xianull/.bun/_bun" ] && source "/Users/xianull/.bun/_bun"
@@ -187,3 +184,33 @@ source "/Users/xianull/.openclaw/completions/openclaw.zsh"
 export PATH="/Users/xianull/.antigravity/antigravity/bin:$PATH"
 
 . "$HOME/.local/bin/env"
+
+# fzf
+[[ -f ~/dotfiles/fzf/fzf.zsh ]] && source ~/dotfiles/fzf/fzf.zsh
+
+# To customize prompt, run `p10k configure` or edit ~/dotfiles/zsh/p10k.zsh.
+[[ ! -f ~/dotfiles/zsh/p10k.zsh ]] || source ~/dotfiles/zsh/p10k.zsh
+CLAUDE_CODE_NO_FLICKER=1
+# Sync hffm project to HNYY_H100-3
+
+alias syncsctfm="rsync -rlptzv --exclude='__pycache__' --exclude='*.pyc' --exclude='.DS_Store'  --exclude='notebooks'  --exclude='.venv'  --exclude='.git' --exclude='runs' ./ HNYY_H100-3:/gpfs/flash/home/jcw/projects/sctfm/"
+# Added by Antigravity IDE
+export PATH="/Users/xianull/.antigravity-ide/antigravity-ide/bin:$PATH"
+
+
+# Added by Antigravity CLI installer
+export PATH="/Users/xianull/.local/bin:$PATH"
+
+# >>> grok installer >>>
+export PATH="$HOME/.grok/bin:$PATH"
+fpath=(~/.grok/completions/zsh $fpath)
+autoload -Uz compinit && compinit -C
+# <<< grok installer <<<
+
+# >>> otty shell integration >>>
+# Added by Otty — toggle in Settings > Shell > Shell Integration.
+# Inert unless launched by Otty (it sets $OTTY_SHELL_INTEGRATION).
+if [ -n "$OTTY_SHELL_INTEGRATION" ] && [ -r "$OTTY_SHELL_INTEGRATION/otty-integration.zsh" ]; then
+  . "$OTTY_SHELL_INTEGRATION/otty-integration.zsh"
+fi
+# <<< otty shell integration <<<

@@ -3,6 +3,7 @@
 yabai -m signal --add event=dock_did_restart action="sudo yabai --load-sa"
 sudo yabai --load-sa
 
+# external_bar: all:<top>:<bottom> —— 主屏+笔记本有栏；Sidecar 会空 40px
 yabai -m config external_bar               all:40:0       \
                 mouse_follows_focus        off            \
                 focus_follows_mouse        off            \
@@ -13,8 +14,8 @@ yabai -m config external_bar               all:40:0       \
                 window_opacity_duration    0.2            \
                 active_window_opacity      1.0            \
                 normal_window_opacity      0.9            \
-                window_animation_duration  0.25           \
-                window_animation_easing    ease_out_back  \
+                window_animation_duration  0.15           \
+                window_animation_easing    ease_out_quint \
                 insert_feedback_color      0xff9dd274     \
                 split_ratio                0.50           \
                 auto_balance               off            \
@@ -29,52 +30,89 @@ yabai -m config external_bar               all:40:0       \
                 right_padding              14             \
                 window_gap                 10
 
-# Exclude problematic apps from being managed:
-yabai -m rule --add app="^(LuLu|Calculator|Software Update|Dictionary|VLC|System Preferences|System Settings|zoom.us|Photo Booth|Archive Utility|Python|LibreOffice|App Store|Steam|Alfred|Activity Monitor)$" manage=off
-yabai -m rule --add label="Finder" app="^Finder$" title="(Co(py|nnect)|Move|Info|Pref)" manage=off
-yabai -m rule --add label="Safari" app="^Safari$" title="^(General|(Tab|Password|Website|Extension)s|AutoFill|Se(arch|curity)|Privacy|Advance)$" manage=off
-yabai -m rule --add label="About This Mac" app="System Information" title="About This Mac" manage=off
-yabai -m rule --add label="Select file to save to" app="^Inkscape$" title="Select file to save to" manage=off
-
 yabai -m config layout bsp
-# 浮动窗口
-yabai -m rule --add app="^(System Settings|系统设置)" manage=off sub-layer=normal
-yabai -m rule --add app="^(CleanMyMac)" manage=off sub-layer=normal
-yabai -m rule --add app="^(Clash Verge|网易云音乐|NeteaseMusic|QQ音乐|QQ|飞书|Lark|微信|WeChat)" manage=off sub-layer=normal
-yabai -m rule --add app="^(访达)" manage=off sub-layer=normal
-otherApp='^(CC Switch|Telegram|腾讯会议|Bob|IINA|Raycast|Tencent Lemon|360安全云盘|arknights|音乐|MotionPro|discover|ChatGPT|PlayCover|访达|Calendar|日历|地图|System Preferences|朋友圈|小程序|Downie 4|Shadowrocket|照片|Epson iProjection|系统设置|1Password 7|Android Studio|印象笔记|MATLAB|CrossOver)$'
 
-yabai -m rule --add app="${otherApp}" manage=off
+# ---------------------------------------------------------------------------
+# manage=off: float apps that are AX-noisy or break tiling.
+# Match REAL process names (yabai uses the app name from AX / NSRunningApplication).
+# Chinese + English aliases both listed where macOS may report either.
+# ---------------------------------------------------------------------------
 
-# Space 2
-yabai -m rule --add app="^Obsidian$" space=2
-yabai -m rule --add app="^Ghostty$" space=3 manage=on
+# System / OS utilities
+yabai -m rule --add app="^(System Settings|系统设置|System Preferences|系统偏好设置)$" manage=off
+yabai -m rule --add app="^(Finder|访达)$" manage=off
+yabai -m rule --add app="^(Activity Monitor|活动监视器|Calculator|计算器|Dictionary|词典|App Store|Software Update|Archive Utility|Photo Booth|System Information)$" manage=off
+yabai -m rule --add app="^(Calendar|日历|Maps|地图|Photos|照片|Music|音乐|TV|Podcasts|播客|Reminders|提醒事项|Notes|备忘录|Stickies|便笺)$" manage=off
+
+# Dialogs / sheets that should never tile
+yabai -m rule --add label="Finder dialogs" app="^Finder$" title="(Co(py|nnect)|Move|Info|Pref)" manage=off
+yabai -m rule --add label="Safari prefs" app="^Safari$" title="^(General|(Tab|Password|Website|Extension)s|AutoFill|Se(arch|curity)|Privacy|Advance)$" manage=off
+yabai -m rule --add label="About This Mac" app="^System Information$" title="About This Mac" manage=off
+yabai -m rule --add label="Inkscape save" app="^Inkscape$" title="Select file to save to" manage=off
+
+# IM / meeting / social — highest hang risk (bad Accessibility)
+yabai -m rule --add app="^(微信|WeChat|QQ|飞书|Lark|Feishu|钉钉|DingTalk|Telegram|Discord|Slack)$" manage=off
+yabai -m rule --add app="^(腾讯会议|TencentMeeting|Tencent Meeting|zoom\.us|Zoom|Microsoft Teams|Teams)$" manage=off
+
+# Media / music
+yabai -m rule --add app="^(Spotify|网易云音乐|NeteaseMusic|QQ音乐|IINA|VLC|QuickTime Player)$" manage=off
+
+# Proxy / network / tray utilities
+yabai -m rule --add app="^(Clash Verge|ClashX|Surge|Shadowrocket|Tailscale|LuLu|Little Snitch|WiFi Explorer)$" manage=off
+
+# Password / launcher / floating tools
+yabai -m rule --add app="^(Raycast|Alfred|1Password|1Password 7|1Password 8|Bob|CleanShot|CleanMyMac|Tencent Lemon|AppCleaner)$" manage=off
+
+# Electron / AI / finance / misc that fight tiling or spam AX
+yabai -m rule --add app="^(ChatGPT|Claude|Perplexity|同花顺|Steam|PlayCover|CrossOver|MATLAB|Android Studio|印象笔记|Evernote|Downie 4|MotionPro|discover|CC Switch|360安全云盘|Python|LibreOffice|Epson iProjection)$" manage=off
+
+# Catch-all for leftover float titles (WeChat mini-programs etc.)
+yabai -m rule --add app="^(朋友圈|小程序)$" manage=off
+
+# ---------------------------------------------------------------------------
+# Space assignments (still apply to floating apps — moves them to a space)
+# ---------------------------------------------------------------------------
 
 # Space 1
 yabai -m rule --add app="^Google Chrome$" space=1
 
-# Space 2 - Obsidian (with extra padding for comfortable reading width)
-yabai -m config --space 2 top_padding 50    \
-                     bottom_padding 50      \
-                     left_padding 100       \
-                     right_padding 100
-
 # Space 3
 yabai -m rule --add app="^Cursor$" space=3
-yabai -m rule --add app="^Visual Studio Code$" space=3
+yabai -m rule --add app="^(Code|Visual Studio Code)$" space=3
 
 # Space 4
 yabai -m rule --add app="^(WPS|WPS Office)$" space=4
 
-# Space 6
-yabai -m rule --add app="^(微信|WeChat)$" space=6
-yabai -m rule --add app="^QQ$" space=6
-yabai -m rule --add app="^(飞书|Lark)$" space=6
+# WeChat scratchpad: home is space 6 when hidden; scratchpad-wechat.sh summons to current space.
+yabai -m rule --add label="wechat-scratchpad" app="^(微信|WeChat)$" scratchpad=wechat space=6 grid=6:6:1:1:4:4
 
-# Space 7
+# Space 6 — social
+yabai -m rule --add app="^QQ$" space=6
+yabai -m rule --add app="^(飞书|Lark|Feishu)$" space=6
+
+# Space 7 — media / proxy
 yabai -m rule --add app="^Clash Verge$" space=7
 yabai -m rule --add app="^Spotify$" space=7
 yabai -m rule --add app="^(网易云音乐|NeteaseMusic)$" space=7
 yabai -m rule --add app="^QQ音乐$" space=7
+
+# NOTE: Ghostty macOS native tabs appear as separate windows to yabai (OS API limit).
+# Do NOT auto-stack / force-relayout on window_created — it breaks Chinese IME.
+# Prefer Ghostty splits (in-app) over tabs when tiling; see ghostty/config keybinds.
+# https://ghostty.org/docs/help/macos-tiling-wms
+
+# Re-evaluate rules against already-open windows (needs scripting addition for some ops)
+yabai -m rule --apply 2>/dev/null || true
+
+# SketchyBar stack index. Remove-then-add so yabairc is idempotent.
+SB=/opt/homebrew/bin/sketchybar
+for _lbl in sb_window_focus sb_window_destroy sb_window_min sb_window_unmin sb_space_changed sb_title_change; do
+  yabai -m signal --remove "$_lbl" 2>/dev/null || true
+done
+yabai -m signal --add event=window_focused       label=sb_window_focus   action="$SB --trigger window_focus"
+yabai -m signal --add event=window_destroyed     label=sb_window_destroy action="$SB --trigger window_focus"
+yabai -m signal --add event=window_minimized     label=sb_window_min     action="$SB --trigger window_focus"
+yabai -m signal --add event=window_deminimized   label=sb_window_unmin   action="$SB --trigger window_focus"
+yabai -m signal --add event=space_changed        label=sb_space_changed  action="$SB --trigger window_focus"
 
 echo "yabai configuration loaded.."

@@ -1,0 +1,44 @@
+onboarding = false
+[theme]
+name = "gruvbox"
+
+auto_switch = false
+[theme.custom]
+# Preserve Ghostty's 90% opacity and blur instead of painting an opaque pane.
+panel_bg = "reset"
+
+[keys]
+# IJKL direction layout: i = up, k = down, j = left, l = right.
+focus_pane_up = "prefix+i"
+focus_pane_down = "prefix+k"
+focus_pane_left = "prefix+j"
+focus_pane_right = "prefix+l"
+navigate_pane_up = "i"
+navigate_pane_down = "k"
+navigate_pane_left = "j"
+navigate_pane_right = "l"
+
+[ui]
+agent_panel_sort = "spaces"
+accent = "#d79921"
+sidebar_width = 28
+sidebar_min_width = 22
+sidebar_max_width = 34
+show_agent_labels_on_pane_borders = true
+
+[ui.sidebar.agents]
+row_gap = 0
+rows = [
+  ["state_icon", { token = "agent", bold = true, dim = false }, "state_text"],
+  [{ token = "workspace", fg = "#83a598" }, { token = "tab", fg = "#928374", dim = true }],
+]
+
+[ui.sidebar.spaces]
+row_gap = 0
+rows = [
+  ["state_icon", { token = "workspace", bold = true, dim = false }],
+  [{ token = "branch", fg = "#83a598" }, "git_status"],
+]
+
+[ui.sound]
+enabled = true

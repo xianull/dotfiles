@@ -1,0 +1,209 @@
+{
+  "version": 2,
+  "plugins": {
+    "obsidian@obsidian-skills": [
+      {
+        "scope": "user",
+        "version": "1.0.1"
+      }
+    ],
+    "obsidian-visual-skills@axton-obsidian-visual-skills": [
+      {
+        "scope": "user",
+        "version": "1265976d9746"
+      }
+    ],
+    "obsidian-cli@obsidian-cli-skill": [
+      {
+        "scope": "user",
+        "version": "1.3.0"
+      }
+    ],
+    "oh-my-claudecode@omc": [
+      {
+        "scope": "user",
+        "version": "4.15.6"
+      }
+    ],
+    "superpowers@claude-plugins-official": [
+      {
+        "scope": "user",
+        "version": "6.2.0"
+      }
+    ],
+    "codex@openai-codex": [
+      {
+        "scope": "user",
+        "version": "1.0.4"
+      }
+    ],
+    "ppt-master@ppt-master": [
+      {
+        "scope": "user",
+        "version": "2.6.0"
+      }
+    ],
+    "swift-lsp@claude-plugins-official": [
+      {
+        "scope": "user",
+        "version": "1.0.0"
+      }
+    ],
+    "code-simplifier@claude-plugins-official": [
+      {
+        "scope": "user",
+        "version": "1.0.0"
+      }
+    ],
+    "andrej-karpathy-skills@karpathy-skills": [
+      {
+        "scope": "user",
+        "version": "1.0.0"
+      }
+    ],
+    "ralph-loop@claude-plugins-official": [
+      {
+        "scope": "user",
+        "version": "1.0.0"
+      }
+    ],
+    "scientific-skills@k-dense-scientific": [
+      {
+        "scope": "user",
+        "version": "0.1.0"
+      }
+    ],
+    "ponytail@ponytail": [
+      {
+        "scope": "user",
+        "version": "4.7.0"
+      }
+    ],
+    "biorender@life-sciences": [
+      {
+        "scope": "user",
+        "version": "1.0.0"
+      }
+    ],
+    "10x-genomics@life-sciences": [
+      {
+        "scope": "user",
+        "version": "1.0.0"
+      }
+    ],
+    "pubmed@life-sciences": [
+      {
+        "scope": "user",
+        "version": "1.0.0"
+      }
+    ],
+    "synapse@life-sciences": [
+      {
+        "scope": "user",
+        "version": "1.0.0"
+      }
+    ],
+    "wiley-scholar-gateway@life-sciences": [
+      {
+        "scope": "user",
+        "version": "1.0.0"
+      }
+    ],
+    "biorxiv@life-sciences": [
+      {
+        "scope": "user",
+        "version": "1.0.0"
+      }
+    ],
+    "clinical-trials@life-sciences": [
+      {
+        "scope": "user",
+        "version": "1.0.0"
+      }
+    ],
+    "chembl@life-sciences": [
+      {
+        "scope": "user",
+        "version": "1.0.0"
+      }
+    ],
+    "owkin@life-sciences": [
+      {
+        "scope": "user",
+        "version": "1.0.0"
+      }
+    ],
+    "open-targets@life-sciences": [
+      {
+        "scope": "user",
+        "version": "1.0.0"
+      }
+    ],
+    "single-cell-rna-qc@life-sciences": [
+      {
+        "scope": "user",
+        "version": "e96556b637b5"
+      }
+    ],
+    "instrument-data-to-allotrope@life-sciences": [
+      {
+        "scope": "user",
+        "version": "e96556b637b5"
+      }
+    ],
+    "nextflow-development@life-sciences": [
+      {
+        "scope": "user",
+        "version": "e96556b637b5"
+      }
+    ],
+    "scvi-tools@life-sciences": [
+      {
+        "scope": "user",
+        "version": "e96556b637b5"
+      }
+    ],
+    "clinical-trial-protocol@life-sciences": [
+      {
+        "scope": "user",
+        "version": "e96556b637b5"
+      }
+    ],
+    "scientific-problem-selection@life-sciences": [
+      {
+        "scope": "user",
+        "version": "e96556b637b5"
+      }
+    ],
+    "tooluniverse@life-sciences": [
+      {
+        "scope": "user",
+        "version": "1.0.0"
+      }
+    ],
+    "medidata@life-sciences": [
+      {
+        "scope": "user",
+        "version": "1.0.0"
+      }
+    ],
+    "consensus@life-sciences": [
+      {
+        "scope": "user",
+        "version": "1.0.0"
+      }
+    ],
+    "cortellis@life-sciences": [
+      {
+        "scope": "user",
+        "version": "1.0.0"
+      }
+    ],
+    "adisinsight@life-sciences": [
+      {
+        "scope": "user",
+        "version": "1.0.0"
+      }
+    ]
+  }
+}

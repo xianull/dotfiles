@@ -317,5 +317,9 @@ return {
 	["WPS Presentation"] = ":microsoft_power_point:",
 	["Zotero"] = ":zotero:",
 	["Feishu"] = ":dingtalk:",
-	["飞书"] = ":dingtalk:"
+	["飞书"] = ":dingtalk:",
+	["Ghostty"] = ":terminal:",
+	["Otty"] = ":iterm:",
+	["Clash Verge"] = ":quantumult_x:",
+	["Clash Verge Rev"] = ":quantumult_x:",
 }

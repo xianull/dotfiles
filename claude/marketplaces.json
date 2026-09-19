@@ -1,0 +1,46 @@
+{
+  "claude-plugins-official": {
+    "source": "github",
+    "repo": "anthropics/claude-plugins-official"
+  },
+  "obsidian-skills": {
+    "source": "github",
+    "repo": "kepano/obsidian-skills"
+  },
+  "axton-obsidian-visual-skills": {
+    "source": "github",
+    "repo": "axtonliu/axton-obsidian-visual-skills"
+  },
+  "obsidian-cli-skill": {
+    "source": "git",
+    "url": "https://github.com/pablo-mano/Obsidian-CLI-skill.git"
+  },
+  "omc": {
+    "source": "git",
+    "url": "https://github.com/Yeachan-Heo/oh-my-claudecode.git"
+  },
+  "openai-codex": {
+    "source": "github",
+    "repo": "openai/codex-plugin-cc"
+  },
+  "ppt-master": {
+    "source": "github",
+    "repo": "hugohe3/ppt-master"
+  },
+  "karpathy-skills": {
+    "source": "github",
+    "repo": "forrestchang/andrej-karpathy-skills"
+  },
+  "k-dense-scientific": {
+    "source": "github",
+    "repo": "xianull/scientific-agent-skills"
+  },
+  "ponytail": {
+    "source": "github",
+    "repo": "DietrichGebert/ponytail"
+  },
+  "life-sciences": {
+    "source": "github",
+    "repo": "anthropics/life-sciences"
+  }
+}

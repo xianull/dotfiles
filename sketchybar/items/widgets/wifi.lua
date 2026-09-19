@@ -1,6 +1,7 @@
 local icons = require("icons")
 local colors = require("colors")
 local settings = require("settings")
+local island = require("items.widgets.sys_island")
 
 -- Execute the event provider binary which provides the event "network_update"
 -- for the network interface "en0", which is fired every 2.0 seconds.
@@ -10,6 +11,7 @@ local popup_width = 200
 
 local wifi_up = sbar.add("item", "widgets.wifi1", {
   position = "right",
+  drawing = island.expanded,
   padding_left = -5,
   width = 0,
   icon = {
@@ -32,6 +34,7 @@ local wifi_up = sbar.add("item", "widgets.wifi1", {
 
 local wifi_down = sbar.add("item", "widgets.wifi2", {
   position = "right",
+  drawing = island.expanded,
   padding_left = -5,
   icon = {
     padding_right = 0,
@@ -53,21 +56,41 @@ local wifi_down = sbar.add("item", "widgets.wifi2", {
 
 local wifi = sbar.add("item", "widgets.wifi.padding", {
   position = "right",
+  drawing = island.expanded,
   label = { drawing = false },
 })
 
--- Shared bracket: cpu + wifi
+local toggle = sbar.add("item", "widgets.sys_toggle", {
+  position = "right",
+  icon = {
+    string = island.expanded and icons.chevron.right or icons.chevron.left,
+    font = { size = 12.0 },
+    color = colors.white,
+    padding_left = 8,
+    padding_right = 8,
+  },
+  label = { drawing = false },
+})
+island.toggle = toggle
+
+-- Shared bracket: cpu_temp + cpu + memory + gpu + wifi + toggle（系统岛）
+local cap = settings.capsule or {}
 local wifi_bracket = sbar.add("bracket", "widgets.cpu_wifi.bracket", {
+  "widgets.cpu_temp",
   "widgets.cpu",
+  "widgets.memory",
+  "widgets.gpu",
   wifi.name,
   wifi_up.name,
-  wifi_down.name
+  wifi_down.name,
+  toggle.name,
 }, {
   background = {
-    color = colors.with_alpha(colors.bg1, 0.8),
-    border_color = colors.with_alpha(colors.bg2, 0.8),
-    border_width = 2,
-    corner_radius = 9,
+    color = colors.with_alpha(colors.bg1, cap.bg_alpha or 0.32),
+    border_width = 1,
+    border_color = colors.with_alpha(colors.white, cap.border_alpha or 0.08),
+    corner_radius = cap.corner_radius or 12,
+    height = cap.height or 30,
   },
   popup = { align = "center", height = 24 }
 })
@@ -230,6 +253,11 @@ wifi_up:subscribe("mouse.clicked", toggle_details)
 wifi_down:subscribe("mouse.clicked", toggle_details)
 wifi:subscribe("mouse.clicked", toggle_details)
 wifi:subscribe("mouse.exited.global", hide_details)
+
+toggle:subscribe("mouse.clicked", function()
+  hide_details()
+  island.toggle_expanded()
+end)
 
 local function copy_label_to_clipboard(env)
   local label = sbar.query(env.NAME).label.value

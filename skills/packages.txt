@@ -1,0 +1,18 @@
+# Global agent skill packages managed by `npx skills`
+# Format: one source per line (owner/repo, git URL, or well-known URL)
+# Install via: ./dotfiles/skills/install.sh
+
+# Scientific research skill suite
+K-Dense-AI/scientific-agent-skills
+
+# Feishu / Lark well-known skills
+https://open.feishu.cn
+
+# Obsidian official skills (bases / markdown / canvas / cli / defuddle)
+git@github.com:kepano/obsidian-skills.git
+
+# Nature-style academic writing / figures / review / PPT / patent
+https://github.com/Yuan1z0825/nature-skills.git
+
+# Herdr terminal multiplexer control
+herdrdev/herdr

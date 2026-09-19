@@ -7,7 +7,11 @@ local icons = {
     apple = "􀣺",
     gear = "􀍟",
     cpu = "􀫥",
+    memory = "􀫦",
+    gpu = "􀧓",
     clipboard = "􀉄",
+    cursor = ":cursor:",
+    grok = "􀆿",
     pomodoro = {
       work = "􀐭",
       ["break"] = "􀸙",
@@ -17,6 +21,10 @@ local icons = {
     switch = {
       on = "􁏮",
       off = "􁏯",
+    },
+    chevron = {
+      left = "􀯶",
+      right = "􀯻",
     },
     volume = {
       _100="􀊩",
@@ -53,17 +61,21 @@ local icons = {
     qq = "󰘅",
     wechat = "󰘑",
     audio = {
-      airpods = "􀪷",
-      airpods_pro = "􀪷",
-      airpods_max = "􀪶",
-      headphones = "􀋋",
-      speaker = "􀊠",
-      iphone = "􀓱",
-      ipad = "􀡚",
-      macbook = "􀟛",
-      display = "􀆿",
+      airpods = "􀪷",       -- airpods
+      airpods_pro = "􀪷",   -- airpodspro
+      airpods_max = "􀺹",   -- airpodsmax
+      headphones = "􀑈",    -- headphones
+      speaker = "􀝎",       -- hifispeaker.fill
+      iphone = "􀟜",        -- iphone
+      ipad = "􀟠",          -- ipad
+      macbook = "􀟛",       -- laptopcomputer
+      display = "􀢹",       -- display
       beats = "􀪷",
-      default = "􀊠",
+      homepod = "􀄥",
+      appletv = "􀡴",
+      usb = "􀟓",
+      bluetooth = "􀂯",
+      default = "􀊠",       -- speaker.wave.2
     },
   },
 
@@ -74,11 +86,19 @@ local icons = {
     apple = "",
     gear = "",
     cpu = "",
+    memory = "",
+    gpu = "󰢮",
     clipboard = "􀉄",
+    cursor = ":cursor:",
+    grok = "󰚩",
 
     switch = {
       on = "󱨥",
       off = "󱨦",
+    },
+    chevron = {
+      left = "󰅁",
+      right = "󰅂",
     },
     volume = {
       _100="",

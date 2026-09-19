@@ -1,6 +1,7 @@
 local icons = require("icons")
 local colors = require("colors")
 local settings = require("settings")
+local island = require("items.widgets.sys_island")
 
 -- Execute the event provider binary which provides the event "cpu_update" for
 -- the cpu load data, which is fired every 2.0 seconds.
@@ -8,6 +9,7 @@ sbar.exec("killall cpu_load >/dev/null; $CONFIG_DIR/helpers/event_providers/cpu_
 
 local cpu = sbar.add("graph", "widgets.cpu" , 42, {
   position = "right",
+  drawing = island.expanded,
   graph = { color = colors.blue },
   background = {
     height = 22,

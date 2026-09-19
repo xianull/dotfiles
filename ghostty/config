@@ -1,10 +1,12 @@
 # Terminal type (use xterm-256color for better SSH compatibility)
 term = xterm-256color
 
-# Font
-font-family = "Hack Nerd Font"
+# Font — Maple Mono CN (primary) + Nerd icons fallback
 font-family = "Maple Mono CN"
-font-size = 19
+font-family = "Hack Nerd Font"
+font-size = 20
+font-feature = calt
+font-feature = ss01
 
 # Window
 window-decoration = true
@@ -44,8 +46,15 @@ selection-foreground = ebdbb2
 macos-option-as-alt = true
 
 # Keybindings
+# Tabs use macOS native tabbing → each tab is a separate window to yabai (half-tile bug).
+# Prefer splits for multi-pane terminal work; they stay inside one OS window.
 keybind = cmd+t=new_tab
 keybind = cmd+n=new_window
+keybind = cmd+d=new_split:right
+keybind = cmd+shift+d=new_split:down
+keybind = cmd+[=goto_split:previous
+keybind = cmd+]=goto_split:next
+keybind = cmd+shift+enter=toggle_split_zoom
 keybind = cmd+1=goto_tab:1
 keybind = cmd+2=goto_tab:2
 keybind = cmd+3=goto_tab:3

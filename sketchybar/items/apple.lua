@@ -8,18 +8,14 @@ sbar.add("item", { width = 5 })
 
 local apple = sbar.add("item", "apple", {
   icon = {
-    font = { size = 16.0 },
+    font = { size = 15.0 },
     string = icons.apple,
     padding_right = 8,
-    padding_left = 8,
+    padding_left = 10,
   },
   label = { drawing = false },
-  background = {
-    color = colors.with_alpha(colors.bg1, 0.8),
-    border_color = colors.with_alpha(colors.bg2, 0.8),
-    border_width = 2,
-    corner_radius = 9,
-  },
+  -- 背景交给 bg_left 统一胶囊，避免双重底
+  background = { drawing = false },
   padding_left = 1,
   padding_right = 1,
 })
