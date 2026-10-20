@@ -76,10 +76,31 @@ shift + ctrl - p : yabai -m window --focus stack.prev
 
 ## Resize (ctrl + lalt - ...)
 # Resize windows: ctrl + lalt - {j, k, i, l} (左下上右)
-ctrl + lalt - j    : yabai -m window --resize right:-100:0 || yabai -m window --resize left:-100:0
-ctrl + lalt - k    : yabai -m window --resize bottom:0:100 || yabai -m window --resize top:0:100
-ctrl + lalt - i    : yabai -m window --resize bottom:0:-100 || yabai -m window --resize top:0:-100
-ctrl + lalt - l    : yabai -m window --resize right:100:0 || yabai -m window --resize left:100:0
+# 终端里放行：tmux 用 C-M-{j,k,i,l} 切 pane。
+ctrl + lalt - j [
+    "Ghostty" ~
+    "kitty"   ~
+    "iTerm2"  ~
+    *         : yabai -m window --resize right:-100:0 || yabai -m window --resize left:-100:0
+]
+ctrl + lalt - k [
+    "Ghostty" ~
+    "kitty"   ~
+    "iTerm2"  ~
+    *         : yabai -m window --resize bottom:0:100 || yabai -m window --resize top:0:100
+]
+ctrl + lalt - i [
+    "Ghostty" ~
+    "kitty"   ~
+    "iTerm2"  ~
+    *         : yabai -m window --resize bottom:0:-100 || yabai -m window --resize top:0:-100
+]
+ctrl + lalt - l [
+    "Ghostty" ~
+    "kitty"   ~
+    "iTerm2"  ~
+    *         : yabai -m window --resize right:100:0 || yabai -m window --resize left:100:0
+]
 
 # Equalize size of windows: ctrl + lalt - e
 ctrl + lalt - e : yabai -m space --balance
@@ -102,11 +123,8 @@ shift + lalt - space : sketchybar --bar hidden=toggle
 # Rotate layout 90 degrees
 shift + lalt - r : yabai -m space --rotate 90
 
-# Restart yabai
-ctrl + lalt - r : brew services restart yabai
-
-# Toggle window border
-ctrl + lalt - b : yabai -m config window_border ==off && yabai -m config window_border on || yabai -m config window_border off
+# Restart yabai (launchd: com.asmvik.yabai; brew services would start a second agent)
+ctrl + lalt - r : yabai --restart-service
 
 # 预设向下插入，然后打开 ghostty。
 # Obsidian 里放行 Opt+Enter，留给 Excalidraw MindMap Builder 添加同级节点。

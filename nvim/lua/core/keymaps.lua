@@ -2,7 +2,7 @@ vim.g.mapleader = " "
 
 local keymap = vim.keymap
 
--- ---------- 导航: j=左 k=下 l=上 i=右 ---------- ---
+-- ---------- 导航: j=左 k=下 i=上 l=右 ---------- ---
 local nav_modes = { "n", "v" }
 keymap.set(nav_modes, "j", "<Left>")
 keymap.set(nav_modes, "k", "<Down>")
@@ -23,6 +23,11 @@ keymap.set("v", "K", ":m '<-2<CR>gv=gv")
 -- 窗口
 keymap.set("n", "<leader>sv", "<C-w>v") -- 水平新增窗口
 keymap.set("n", "<leader>sh", "<C-w>s") -- 垂直新增窗口
+-- 窗口间跳转（只在 nvim 内，不跳到 tmux pane；tmux 用 C-M-jkil）
+keymap.set("n", "<C-j>", "<C-w>h")
+keymap.set("n", "<C-k>", "<C-w>j")
+keymap.set("n", "<C-i>", "<C-w>k")
+keymap.set("n", "<C-l>", "<C-w>l")
 
 -- 取消高亮
 keymap.set("n", "<leader>nh", ":nohl<CR>")
