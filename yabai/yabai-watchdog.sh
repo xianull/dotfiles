@@ -9,7 +9,6 @@ TIMEOUT_SEC="${YABAI_WATCHDOG_TIMEOUT:-3}"
 LOG="${YABAI_WATCHDOG_LOG:-/tmp/yabai_watchdog.log}"
 LOCK="/tmp/yabai_${USER}.lock"
 SOCK="/tmp/yabai_${USER}.socket"
-SA_SOCK="/tmp/yabai-sa_${USER}.socket"
 COOLDOWN_FILE="/tmp/yabai_watchdog_cooldown"
 COOLDOWN_SEC="${YABAI_WATCHDOG_COOLDOWN:-120}"
 
@@ -54,10 +53,13 @@ restart_yabai() {
   date +%s >"$COOLDOWN_FILE"
   uid="$(id -u)"
 
-  # Kill daemon + any stuck clients waiting on the socket
+  # Kill daemon + any stuck clients waiting on the socket.
+  # Do not unlink /tmp/yabai-sa_$USER.socket. That path is bound by the payload inside Dock.
+  # Removing it leaves Dock on a deleted inode, and focus opacity stops
+  # until Dock itself restarts.
   /usr/bin/pkill -9 -x yabai 2>/dev/null || true
   sleep 0.4
-  rm -f "$LOCK" "$SOCK" "$SA_SOCK"
+  rm -f "$LOCK" "$SOCK"
 
   # Prefer official LaunchAgent (com.asmvik.yabai) — avoid double agents
   if launchctl kickstart -k "gui/${uid}/com.asmvik.yabai" >/dev/null 2>&1; then
@@ -71,12 +73,15 @@ restart_yabai() {
     log "direct launch pid=$!"
   fi
 
-  sleep 1.2
-  if alive_ipc; then
-    log "yabai healthy after restart"
-    return 0
-  fi
-  log "yabai still unhealthy after restart"
+  # yabai needs a few seconds to come up (SA load etc.); 1.2s gave false alarms.
+  for _ in 1 2 3 4 5 6 7 8 9 10; do
+    sleep 1
+    if alive_ipc; then
+      log "yabai healthy after restart"
+      return 0
+    fi
+  done
+  log "yabai still unhealthy 10s after restart"
   return 1
 }
 
@@ -86,7 +91,7 @@ if ! /usr/bin/pgrep -x yabai >/dev/null 2>&1; then
   if [ -e "$LOCK" ] || [ -e "$SOCK" ]; then
     if ! in_cooldown; then
       log "stale lock/socket without process — cleaning"
-      rm -f "$LOCK" "$SOCK" "$SA_SOCK"
+      rm -f "$LOCK" "$SOCK"
       "$YABAI" --start-service >/dev/null 2>&1 || true
     fi
   fi

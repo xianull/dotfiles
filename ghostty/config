@@ -1,12 +1,26 @@
 # Terminal type (use xterm-256color for better SSH compatibility)
 term = xterm-256color
 
-# Font — Maple Mono CN (primary) + Nerd icons fallback
+# Font — Maple Mono CN for Latin, 霞鹜文楷等宽 Medium for CJK.
+# Ghostty's codepoint map takes a family, not a weight. The installed
+# Medium cut is grouped under the Regular family, so a local face
+# "~/Library/Fonts/LXGWWenKaiMono-MediumUI.ttf" exposes that cut as
+# its own regular family.
 font-family = "Maple Mono CN"
+font-family = "霞鹜文楷等宽 Medium"
 font-family = "Hack Nerd Font"
-font-size = 20
+font-size = 18
 font-feature = calt
 font-feature = ss01
+font-codepoint-map = U+2E80-U+2EFF=霞鹜文楷等宽 Medium
+font-codepoint-map = U+2F00-U+2FDF=霞鹜文楷等宽 Medium
+font-codepoint-map = U+3000-U+303F=霞鹜文楷等宽 Medium
+font-codepoint-map = U+3040-U+30FF=霞鹜文楷等宽 Medium
+font-codepoint-map = U+31C0-U+31EF=霞鹜文楷等宽 Medium
+font-codepoint-map = U+3400-U+4DBF=霞鹜文楷等宽 Medium
+font-codepoint-map = U+4E00-U+9FFF=霞鹜文楷等宽 Medium
+font-codepoint-map = U+F900-U+FAFF=霞鹜文楷等宽 Medium
+font-codepoint-map = U+FF00-U+FFEF=霞鹜文楷等宽 Medium
 
 # Window
 window-decoration = true

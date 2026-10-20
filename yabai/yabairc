@@ -1,6 +1,7 @@
 #!/usr/bin/env sh
 
-yabai -m signal --add event=dock_did_restart action="sudo yabai --load-sa"
+yabai -m signal --remove sa_reload 2>/dev/null || true
+yabai -m signal --add event=dock_did_restart label=sa_reload action="sudo yabai --load-sa"
 sudo yabai --load-sa
 
 # external_bar: all:<top>:<bottom> —— 主屏+笔记本有栏；Sidecar 会空 40px
@@ -10,7 +11,7 @@ yabai -m config external_bar               all:40:0       \
                 window_zoom_persist        off            \
                 window_placement           second_child   \
                 window_shadow              float          \
-                window_opacity             off             \
+                window_opacity             on              \
                 window_opacity_duration    0.2            \
                 active_window_opacity      1.0            \
                 normal_window_opacity      0.9            \
@@ -50,6 +51,12 @@ yabai -m rule --add label="Safari prefs" app="^Safari$" title="^(General|(Tab|Pa
 yabai -m rule --add label="About This Mac" app="^System Information$" title="About This Mac" manage=off
 yabai -m rule --add label="Inkscape save" app="^Inkscape$" title="Select file to save to" manage=off
 
+# Obsidian settings is a second AXStandardWindow:
+#   "设置 - <vault> - Obsidian <ver>" / "Settings - <vault> - Obsidian <ver>"
+# Electron may set the title after spawn — see obsidian_settings_float signal.
+yabai -m rule --remove "obsidian-settings" 2>/dev/null || true
+yabai -m rule --add label="obsidian-settings" app="^Obsidian$" title="^(Settings|设置|設定) - " manage=off grid=6:6:1:1:4:4
+
 # IM / meeting / social — highest hang risk (bad Accessibility)
 yabai -m rule --add app="^(微信|WeChat|QQ|飞书|Lark|Feishu|钉钉|DingTalk|Telegram|Discord|Slack)$" manage=off
 yabai -m rule --add app="^(腾讯会议|TencentMeeting|Tencent Meeting|zoom\.us|Zoom|Microsoft Teams|Teams)$" manage=off
@@ -64,10 +71,15 @@ yabai -m rule --add app="^(Clash Verge|ClashX|Surge|Shadowrocket|Tailscale|LuLu|
 yabai -m rule --add app="^(Raycast|Alfred|1Password|1Password 7|1Password 8|Bob|CleanShot|CleanMyMac|Tencent Lemon|AppCleaner)$" manage=off
 
 # Electron / AI / finance / misc that fight tiling or spam AX
-yabai -m rule --add app="^(ChatGPT|Claude|Perplexity|同花顺|Steam|PlayCover|CrossOver|MATLAB|Android Studio|印象笔记|Evernote|Downie 4|MotionPro|discover|CC Switch|360安全云盘|Python|LibreOffice|Epson iProjection)$" manage=off
+yabai -m rule --add app="^(ChatGPT|Claude|Perplexity|Grok Bot|同花顺|Steam|PlayCover|CrossOver|MATLAB|Android Studio|印象笔记|Evernote|Downie 4|MotionPro|discover|CC Switch|360安全云盘|Python|LibreOffice|Epson iProjection)$" manage=off
 
 # Catch-all for leftover float titles (WeChat mini-programs etc.)
 yabai -m rule --add app="^(朋友圈|小程序)$" manage=off
+
+# Ghostty native tabs are separate windows. Leave the app unmanaged so a new
+# tab is not inserted into the bsp tree. https://ghostty.org/docs/help/macos-tiling-wms
+yabai -m rule --remove "ghostty-float" 2>/dev/null || true
+yabai -m rule --add label="ghostty-float" app="^Ghostty$" manage=off
 
 # ---------------------------------------------------------------------------
 # Space assignments (still apply to floating apps — moves them to a space)
@@ -96,17 +108,13 @@ yabai -m rule --add app="^Spotify$" space=7
 yabai -m rule --add app="^(网易云音乐|NeteaseMusic)$" space=7
 yabai -m rule --add app="^QQ音乐$" space=7
 
-# NOTE: Ghostty macOS native tabs appear as separate windows to yabai (OS API limit).
-# Do NOT auto-stack / force-relayout on window_created — it breaks Chinese IME.
-# Prefer Ghostty splits (in-app) over tabs when tiling; see ghostty/config keybinds.
-# https://ghostty.org/docs/help/macos-tiling-wms
-
 # Re-evaluate rules against already-open windows (needs scripting addition for some ops)
 yabai -m rule --apply 2>/dev/null || true
 
 # SketchyBar stack index. Remove-then-add so yabairc is idempotent.
 SB=/opt/homebrew/bin/sketchybar
-for _lbl in sb_window_focus sb_window_destroy sb_window_min sb_window_unmin sb_space_changed sb_title_change; do
+for _lbl in sb_window_focus sb_window_destroy sb_window_min sb_window_unmin sb_space_changed sb_title_change obsidian_settings_float ghostty_tab_create ghostty_tab_destroy; do
+  # ghostty_tab_* stays in this list so a reload drops the old bsp-relayout signals.
   yabai -m signal --remove "$_lbl" 2>/dev/null || true
 done
 yabai -m signal --add event=window_focused       label=sb_window_focus   action="$SB --trigger window_focus"
@@ -114,5 +122,7 @@ yabai -m signal --add event=window_destroyed     label=sb_window_destroy action=
 yabai -m signal --add event=window_minimized     label=sb_window_min     action="$SB --trigger window_focus"
 yabai -m signal --add event=window_deminimized   label=sb_window_unmin   action="$SB --trigger window_focus"
 yabai -m signal --add event=space_changed        label=sb_space_changed  action="$SB --trigger window_focus"
+yabai -m signal --add event=window_title_changed app="^Obsidian$" label=obsidian_settings_float \
+                action="$HOME/.config/yabai/float-obsidian-settings.sh"
 
 echo "yabai configuration loaded.."
