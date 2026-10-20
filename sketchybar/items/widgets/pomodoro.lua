@@ -10,12 +10,10 @@ local break_duration = 5 * 60
 local long_break_duration = 15 * 60
 local SESSIONS_PER_LONG_BREAK = 4
 
--- Persistence file (legacy local) + vault focus-state (shared with Obsidian)
-local STATE_FILE = os.getenv("HOME") .. "/.cache/sketchybar/pomodoro_state.lua"
+-- 状态只有一份：vault 里的 focus-state.json，由 focus_ctl.py 维护（Home 和这里共用）
 -- Pure Lua resolver — never io.popen during load (pclose blocks sketchybarrc)
 local vault_res = require("helpers.obsidian_vault")
 local VAULT = vault_res.path()
-local FOCUS_CTL = VAULT .. "/Settings/Scripts/focus_ctl.py"
 -- SketchyBar exec 会把中文路径拆坏；走纯 ASCII 包装脚本
 local FOCUS_WRAP = (os.getenv("HOME") or "") .. "/.config/sketchybar/helpers/focus_ctl.sh"
 local FOCUS_STATE = VAULT .. "/Settings/cache/focus-state.json"
@@ -73,6 +71,10 @@ local state = {
   total_seconds = work_duration,
   completed_sessions = 0,
   dnd_enabled = false,  -- Track DND state
+  -- 运行中这一段的结束时刻（unix 秒）。和 Home / focus_ctl 同一把尺子：tick 每秒按它重算剩余，
+  -- 不再自减——自减会累积漂移，合盖睡眠醒来也只减了 1 秒，和 Home 对不上，日记时长也跟着偏长。
+  phase_end = nil,
+  completing = false,   -- phase-complete / stop 正在跑，别重复触发
   -- shared focus fields
   mode = "idle",          -- idle | task | mindfulness | pomodoro
   label = nil,
@@ -98,28 +100,6 @@ local function format_time(seconds)
   return string.format("%02d:%02d", mins, secs)
 end
 
--- Persistence: write state as plain lua so we can dofile it back
-local function save_state()
-  os.execute("mkdir -p " .. STATE_FILE:match("(.*)/"))
-  local f = io.open(STATE_FILE, "w")
-  if not f then return end
-  -- If running, persist phase_end_time so reload preserves the actual elapsed time
-  local phase_end = state.is_running and (os.time() + state.remaining_seconds) or nil
-  f:write(string.format(
-    "return { is_running=%s, is_break=%s, is_long_break=%s, remaining=%d, total=%d, completed=%d, phase_end=%s, mode=%q, label=%s }\n",
-    tostring(state.is_running),
-    tostring(state.is_break),
-    tostring(state.is_long_break),
-    state.remaining_seconds,
-    state.total_seconds,
-    state.completed_sessions,
-    phase_end and tostring(phase_end) or "nil",
-    state.mode or "idle",
-    state.label and string.format("%q", state.label) or "nil"
-  ))
-  f:close()
-end
-
 -- sbar.exec JSON-decodes focus_ctl output into a table. Never call :match
 -- on that payload — a nil/table :match used to tight-loop the lua runtime
 -- and fill sketchybar.out.log (gigabytes).
@@ -135,6 +115,7 @@ local function apply_focus_fields(mode, running, is_break, is_long, rem, total, 
     state.task_title = nil
     state.remaining_seconds = work_duration
     state.total_seconds = work_duration
+    state.phase_end = nil
     return true
   end
 
@@ -155,6 +136,7 @@ local function apply_focus_fields(mode, running, is_break, is_long, rem, total, 
   state.label = label
   state.task_title = task_title or label
   state.task_path = task_path
+  state.phase_end = state.is_running and (phase_end or (os.time() + state.remaining_seconds)) or nil
   return true
 end
 
@@ -210,37 +192,6 @@ local function pull_focus_state(cb)
   return ok
 end
 
-local function load_state()
-  -- Prefer vault focus-state whenever present and not idle
-  local f = io.open(FOCUS_STATE, "r")
-  if f then
-    local raw = f:read("*a")
-    f:close()
-    if raw and raw:match('"mode"%s*:%s*"(task|mindfulness|pomodoro)"') then
-      if apply_focus_json(raw) then return end
-    elseif raw and raw:match('"mode"%s*:%s*"idle"') then
-      apply_focus_json(raw)
-      -- fall through to local if idle — keep pure pomodoro local state
-    end
-  end
-
-  local ok, data = pcall(dofile, STATE_FILE)
-  if not ok or type(data) ~= "table" then return end
-  state.is_running       = data.is_running or false
-  state.is_break         = data.is_break or false
-  state.is_long_break    = data.is_long_break or false
-  state.total_seconds    = data.total or work_duration
-  state.completed_sessions = data.completed or 0
-  state.mode             = data.mode or "pomodoro"
-  state.label            = data.label
-  if state.is_running and data.phase_end then
-    local remaining = data.phase_end - os.time()
-    state.remaining_seconds = remaining > 0 and remaining or 0
-  else
-    state.remaining_seconds = data.remaining or state.total_seconds
-  end
-end
-
 -- ============================================================================
 -- Layout (position=right → add order is reverse of visual L→R):
 --   visual:  [ ring | label | MM:SS ]
@@ -250,6 +201,9 @@ local RING_SCRIPT = os.getenv("HOME") .. "/dotfiles/sketchybar/helpers/focus_rin
 local RING_PNG = "/tmp/sbar_focus_ring.png"
 local last_ring_key = ""
 local last_ring_ts = 0
+local last_freq = 1  -- time item 创建时的 update_freq
+-- 方案可选：空闲时不显示 25:00，只留圆环（zen 开）
+local hide_idle_time = (settings.pomodoro or {}).hide_idle_time
 
 -- Time label (rightmost) — wide enough for "MM:SS" with Maple Mono CN
 M.time = sbar.add("item", "widgets.pomodoro.time", {
@@ -411,128 +365,73 @@ local function update_display()
     label = {
       string = format_time(math.max(0, state.remaining_seconds)),
       color = label_color,
+      drawing = not (hide_idle_time and state.mode == "idle"),
     },
   })
-end
-
--- Advance to the next phase. Called when timer hits 0 or when user skips.
--- Returns true if a notification should fire.
-local function advance_cycle(notify)
-  if state.is_break then
-    -- Break → Work
-    state.is_break = false
-    state.is_long_break = false
-    state.remaining_seconds = work_duration
-  else
-    -- Work → Break (count this completed work session first)
-    state.completed_sessions = state.completed_sessions + 1
-    state.is_break = true
-    state.is_long_break = (state.completed_sessions % SESSIONS_PER_LONG_BREAK == 0)
-    state.remaining_seconds = state.is_long_break and long_break_duration or break_duration
+  -- 只有在走秒时才每秒唤醒一次 Lua；空闲 / 暂停时不轮询
+  local freq = state.is_running and 1 or 0
+  if freq ~= last_freq then
+    last_freq = freq
+    M.time:set({ update_freq = freq })
   end
-  state.total_seconds = state.remaining_seconds
+end
 
-  if notify then
-    local message
-    if state.is_long_break then
-      message = "Long break! You earned it."
-    elseif state.is_break then
-      message = "Time for a break!"
-    else
-      message = "Back to work!"
-    end
-    sbar.exec(string.format(
-      [[osascript -e 'display notification "%s" with title "Pomodoro" sound name "Glass"']],
-      message
-    ))
+local function sync_dnd()
+  set_dnd(state.is_running and not state.is_break)
+end
+
+-- 唯一的状态机在 focus_ctl.py：这里只发命令、显示结果。它写完 focus-state.json 会自己
+-- trigger focus_sync，所以 Home 和这里不用互相通知；从这里开的番茄钟 Home 也看得到、会记进日记。
+local function ctl(args, after)
+  if state.completing then return end
+  state.completing = true
+  sbar.exec(focus_ctl_cmd(args), function(out)
+    state.completing = false
+    if not apply_focus_json(out) then pull_focus_state() end
+    sync_dnd()
+    update_display()
+    if after then after() end
+  end)
+end
+
+local function notify_phase()
+  local title, msg = "Pomodoro", "Back to work!"
+  if state.mode == "idle" then
+    title, msg = "Focus", "Session complete"
+  elseif state.is_long_break then
+    msg = "Long break! You earned it."
+  elseif state.is_break then
+    msg = "Time for a break!"
   end
-
-  set_dnd(not state.is_break)
+  sbar.exec(string.format(
+    [[osascript -e 'display notification "%s" with title "%s" sound name "Glass"']],
+    msg,
+    title
+  ))
 end
 
--- Reset timer
-local function reset_timer()
-  state.is_running = false
-  state.is_break = false
-  state.is_long_break = false
-  state.remaining_seconds = work_duration
-  state.total_seconds = work_duration
-  state.completed_sessions = 0
-  set_dnd(false)  -- Disable DND when resetting
-  save_state()
-  update_display()
-end
-
--- Timer tick
+-- 每秒按 phase_end 重算剩余（不自减，不漂移，睡眠醒来也对）。到点交给 focus_ctl 结算：
+-- 任务 / 正念 → 写日记并空闲；番茄 → 休息 / 下一段工作。
 local function tick()
-  if not state.is_running then return end
-
-  state.remaining_seconds = state.remaining_seconds - 1
-
-  if state.remaining_seconds <= 0 then
-    -- Obsidian-linked sessions: settle via focus_ctl then adopt result
-    if state.mode == "task" or state.mode == "mindfulness" then
-      if not state.is_break then
-        local py = focus_ctl_cmd("phase-complete")
-        sbar.exec(py, function(out)
-          if out and out ~= "" then
-            apply_focus_json(out)
-          end
-          -- re-read file as source of truth
-          pull_focus_state()
-          if state.mode == "idle" then
-            state.remaining_seconds = work_duration
-            state.total_seconds = work_duration
-            state.is_running = false
-            state.is_break = false
-          end
-          save_state()
-          update_display()
-          sbar.exec([[osascript -e 'display notification "Session complete" with title "Focus" sound name "Glass"']])
-        end)
-        state.remaining_seconds = 0
-        update_display()
-        return
-      else
-        -- break finished → idle for linked sessions
-        local py = focus_ctl_cmd("stop --reason complete")
-        sbar.exec(py, function()
-          pull_focus_state()
-          state.mode = "idle"
-          state.is_running = false
-          state.is_break = false
-          state.label = nil
-          state.remaining_seconds = work_duration
-          state.total_seconds = work_duration
-          save_state()
-          update_display()
-        end)
-        return
-      end
-    end
-    advance_cycle(true)
-    save_state()
+  if not state.is_running or state.completing then return end
+  if state.phase_end then
+    state.remaining_seconds = math.max(0, state.phase_end - os.time())
+  else
+    state.remaining_seconds = math.max(0, state.remaining_seconds - 1)
   end
-
+  if state.remaining_seconds <= 0 then
+    ctl("phase-complete", notify_phase)
+  end
   update_display()
 end
 
--- Drive ticks from the time item (which has update_freq=1)
-M.time:subscribe({ "routine", "system_woke" }, function()
-  tick()
-end)
+M.time:subscribe({ "routine", "system_woke" }, tick)
 
--- Explicit focus_sync event from Obsidian / focus_ctl writers
 sbar.add("event", "focus_sync")
 local function on_focus_sync()
   pull_focus_state()
-  save_state()
+  sync_dnd()
   update_display()
-  if state.is_running and not state.is_break then
-    set_dnd(true)
-  elseif not state.is_running then
-    set_dnd(false)
-  end
 end
 M.time:subscribe("focus_sync", on_focus_sync)
 M.pomodoro:subscribe("focus_sync", on_focus_sync)
@@ -666,21 +565,8 @@ sbar.add("item", "widgets.pomodoro.skip", {
   },
   width = popup_width,
 }):subscribe("mouse.clicked", function()
-  -- Linked Obsidian sessions: settle + write diary, don't just skip locally
-  if state.mode == "task" or state.mode == "mindfulness" then
-    local py = focus_ctl_cmd("stop --reason complete")
-    sbar.exec(py, function(out)
-      if out and out ~= "" then apply_focus_json(out) end
-      pull_focus_state()
-      reset_timer()
-      update_display()
-      M.bracket:set({ popup = { drawing = false } })
-    end)
-    return
-  end
-  advance_cycle(false)
-  save_state()
-  update_display()
+  -- 任务 / 正念：结算并结束；番茄：直接进入下一段
+  ctl("phase-complete")
   M.bracket:set({ popup = { drawing = false } })
 end)
 
@@ -696,17 +582,7 @@ sbar.add("item", "widgets.pomodoro.reset", {
   },
   width = popup_width,
 }):subscribe("mouse.clicked", function()
-  if state.mode == "task" or state.mode == "mindfulness" then
-    local py = focus_ctl_cmd("stop --reason complete")
-    sbar.exec(py, function(out)
-      if out and out ~= "" then apply_focus_json(out) end
-      pull_focus_state()
-      reset_timer()
-      M.bracket:set({ popup = { drawing = false } })
-    end)
-    return
-  end
-  reset_timer()
+  ctl("stop --reason complete")
   M.bracket:set({ popup = { drawing = false } })
 end)
 
@@ -754,43 +630,10 @@ local function handle_click(env)
       },
     })
     M.bracket:set({ popup = { drawing = "toggle" } })
+  elseif state.mode == "idle" then
+    ctl("start --mode pomodoro")
   else
-    local will_run = not state.is_running
-    -- Linked Obsidian sessions: pause/resume through focus_ctl
-    if state.mode == "task" or state.mode == "mindfulness" then
-      local sub = will_run and "resume" or "pause"
-      -- Use env -i path fallbacks; write-side needs python (Obsidian already uses it)
-      local py = focus_ctl_cmd(sub)
-      sbar.exec(py, function(out)
-        if out and out ~= "" then
-          apply_focus_json(out)
-        else
-          -- local fallback toggle if python unavailable
-          state.is_running = will_run
-          if will_run then
-            -- phase_end is managed in JSON; approximate locally
-            state.remaining_seconds = state.remaining_seconds
-          end
-        end
-        if will_run then set_dnd(not state.is_break) else set_dnd(false) end
-        save_state()
-        update_display()
-      end)
-      return
-    end
-
-    state.is_running = will_run
-    if state.is_running and state.mode == "idle" then
-      state.mode = "pomodoro"
-    end
-    -- Toggle DND: enable when starting work, disable when pausing or on break
-    if state.is_running then
-      set_dnd(not state.is_break)
-    else
-      set_dnd(false)
-    end
-    save_state()
-    update_display()
+    ctl(state.is_running and "pause" or "resume")
   end
 end
 
@@ -806,22 +649,9 @@ M.pomodoro:subscribe("mouse.exited.global", close_popup)
 M.time:subscribe("mouse.exited.global", close_popup)
 M.ring:subscribe("mouse.exited.global", close_popup)
 
--- Restore previous state (counter, phase, running/paused, elapsed-while-down)
-load_state()
--- If a phase ended while sketchybar was down, advance once silently so the
--- timer continues from the right place instead of sitting at 0:00.
-if state.is_running and state.remaining_seconds <= 0 then
-  advance_cycle(false)
-  save_state()
-end
--- Re-sync DND to match the loaded state.
-if state.is_running and not state.is_break then
-  set_dnd(true)
-else
-  set_dnd(false)
-end
-
--- Initialize display
+-- 启动只认 focus-state.json。SketchyBar 没在跑期间到点的，第一次 tick 会交给 focus_ctl 结算。
+pull_focus_state()
+sync_dnd()
 update_display()
 
 return M

@@ -1058,4 +1058,9 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except BrokenPipeError:
+        # SketchyBar 重载 / 超时后不再读输出：安静退出，别往 err.log 里刷整段堆栈
+        os.dup2(os.open(os.devnull, os.O_WRONLY), sys.stdout.fileno())
+        sys.exit(0)

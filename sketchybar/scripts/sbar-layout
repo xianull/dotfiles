@@ -1,0 +1,26 @@
+#!/bin/sh
+# 切换 SketchyBar 方案（布局）。配色另外在苹果菜单里切，两者独立。
+#   sbar-layout            在所有方案间轮换
+#   sbar-layout zen        切到指定方案
+#   sbar-layout list       列出方案，* 是当前的
+set -eu
+DIR="${HOME}/.config/sketchybar"
+FILE="$DIR/.layout"
+cur=$(cat "$FILE" 2>/dev/null || echo islands)
+names=$(ls "$DIR/layouts" | sed -n 's/\.lua$//p' | sort)
+
+case "${1:-toggle}" in
+  list)
+    for n in $names; do [ "$n" = "$cur" ] && echo "* $n" || echo "  $n"; done
+    exit 0 ;;
+  toggle)
+    next=$(printf '%s\n' $names | awk -v c="$cur" 'NR==1{first=$0} found{print; exit} $0==c{found=1} END{if(!found||NR==0)print first}' | head -1)
+    [ -n "$next" ] || next=$(printf '%s\n' $names | head -1) ;;
+  *)
+    next=$1
+    [ -f "$DIR/layouts/$next.lua" ] || { echo "没有这个方案：$next（可选：$(echo $names)）" >&2; exit 1; } ;;
+esac
+
+printf '%s\n' "$next" > "$FILE"
+PATH="/opt/homebrew/bin:/usr/local/bin:$PATH" sketchybar --reload
+echo "SketchyBar 方案：$next"

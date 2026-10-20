@@ -7,6 +7,22 @@ local spaces = {}
 
 local cap = settings.capsule or {}
 local pill_r = 8
+-- 方案可选：没有窗口的桌面不显示（当前所在的除外）。islands 不开，zen 开
+local hide_empty = (settings.spaces or {}).hide_empty
+-- 当前桌面的高亮底色：方案可改（zen 用 gruvbox 暖黄），默认半透明蓝
+local active_bg = colors.with_alpha(
+  (settings.spaces or {}).active_color or colors.blue or colors.bg2,
+  (settings.spaces or {}).active_alpha or 0.35
+)
+local seen = {} -- [i] = { selected = bool, empty = bool }
+
+local function sync_visible(i)
+  if not hide_empty then return end
+  local st = seen[i] or {}
+  local show = st.selected or not st.empty
+  sbar.set("space." .. i, { drawing = show })
+  sbar.set("space.padding." .. i, { drawing = show })
+end
 
 for i = 1, 10, 1 do
   local space = sbar.add("space", "space." .. i, {
@@ -61,6 +77,9 @@ for i = 1, 10, 1 do
 
   space:subscribe("space_change", function(env)
     local selected = env.SELECTED == "true"
+    seen[i] = seen[i] or {}
+    seen[i].selected = selected
+    sync_visible(i)
     -- 选中：轻蓝底 + 白字（贴系统强调）；动画更短更稳
     sbar.animate("tanh", 8, function()
       space:set({
@@ -73,9 +92,7 @@ for i = 1, 10, 1 do
           color = selected and colors.white or colors.grey,
         },
         background = {
-          color = selected
-            and colors.with_alpha(colors.blue or colors.bg2, 0.35)
-            or colors.transparent,
+          color = selected and active_bg or colors.transparent,
           corner_radius = pill_r,
         },
       })
@@ -115,10 +132,14 @@ space_window_observer:subscribe("space_windows_change", function(env)
   end
 
   if (no_app) then
-    icon_line = " —"
+    icon_line = hide_empty and "" or " —"
   end
   local sp = spaces[env.INFO.space]
   if not sp then return end
+  local idx = tonumber(env.INFO.space)
+  seen[idx] = seen[idx] or {}
+  seen[idx].empty = no_app
+  sync_visible(idx)
   sbar.animate("tanh", 8, function()
     sp:set({ label = { string = icon_line } })
   end)

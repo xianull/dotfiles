@@ -787,7 +787,7 @@ local function get_current_scheme()
       return theme
     end
   end
-  return "tokyo_night"
+  return "gruvbox_material"
 end
 
 -- Save current scheme to file

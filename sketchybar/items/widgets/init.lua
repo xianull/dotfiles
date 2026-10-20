@@ -1,13 +1,18 @@
-require("items.widgets.battery")
-require("items.widgets.volume")
-require("items.widgets.cpu_temp")
-require("items.widgets.cpu")
-require("items.widgets.memory")
-require("items.widgets.gpu")
-require("items.widgets.wifi")
-require("items.widgets.wechat_and_qq")
-require("items.widgets.ai_usage")
+-- 加载哪些小组件由方案决定（helpers/layout.lua），默认就是下面这份
 -- Focus: pomodoro + todos (order matters for right-side layout)
-require("items.widgets.pomodoro")
-require("items.widgets.obsidian_todos")
-require("items.widgets.focus_bracket")
+for _, mod in ipairs(require("helpers.layout").list("widgets", {
+  "items.widgets.battery",
+  "items.widgets.volume",
+  "items.widgets.cpu_temp",
+  "items.widgets.cpu",
+  "items.widgets.memory",
+  "items.widgets.gpu",
+  "items.widgets.wifi",
+  "items.widgets.wechat_and_qq",
+  "items.widgets.ai_usage",
+  "items.widgets.pomodoro",
+  "items.widgets.obsidian_todos",
+  "items.widgets.focus_bracket",
+})) do
+  require(mod)
+end

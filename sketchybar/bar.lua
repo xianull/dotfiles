@@ -3,7 +3,7 @@ local colors = require("colors")
 -- 主屏 + 笔记本都要栏；Sidecar/iPad 不要。
 -- 用 arrangement id 列表，不用 all。接入 iPad 时才不会整栏克隆上去。
 -- 不要在 display_change 里改 blur，否则会和窗口 backing 互相触发、整栏闪。
-sbar.bar({
+sbar.bar(require("helpers.layout").bar({
   position = "top",
   height = 40,
   color = colors.transparent,
@@ -18,7 +18,7 @@ sbar.bar({
   sticky = true,
   display = "1,2",
   blur_radius = 30,
-})
+}))
 
 local YABAI = "/opt/homebrew/bin/yabai"
 local current_spec = "1,2"

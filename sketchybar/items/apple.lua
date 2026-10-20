@@ -57,6 +57,22 @@ end
 -- Current mode state
 local show_light_mode = get_mode_preference()
 
+-- 方案（布局）：点一下轮换，等同于命令行 sbar-layout。配色在下面单独切
+local layout_row = sbar.add("item", "theme.layout", {
+  position = "popup." .. apple_bracket.name,
+  icon = { string = "Layout", color = colors.white, font = { size = 13.0 }, padding_left = 8 },
+  label = {
+    string = require("helpers.layout").name .. "  ⇄",
+    color = colors.grey,
+    font = { size = 11.0 },
+    padding_right = 8,
+  },
+})
+layout_row:subscribe("mouse.clicked", function()
+  apple_bracket:set({ popup = { drawing = false } })
+  sbar.exec(os.getenv("HOME") .. "/.config/sketchybar/scripts/sbar-layout")
+end)
+
 -- Popup header with mode toggle
 local header = sbar.add("item", "theme.header", {
   position = "popup." .. apple_bracket.name,

@@ -1,6 +1,9 @@
 -- Require the sketchybar module
 sbar = require("sketchybar")
 
+-- 先定方案（布局）：它会改 settings，必须在任何组件加载之前
+require("helpers.layout")
+
 -- Set the bar name, if you are using another bar instance than sketchybar
 -- sbar.set_bar_name("bottom_bar")
 

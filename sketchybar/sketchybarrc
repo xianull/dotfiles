@@ -1,5 +1,21 @@
 #!/usr/bin/env lua
 
+-- launchd 把 stderr 接到这个文件。macOS 上每次 sbar.exec fork 出的子进程都会打一行
+-- "MallocStackLogging: can't turn off..."（无害、关不掉），一个月就是 25 万行 / 24MB。
+-- 启动时超过 5MB 就原地截断（不能删了重建：launchd 还开着原来那个文件）。
+do
+  local log = "/opt/homebrew/var/log/sketchybar/sketchybar.err.log"
+  local f = io.open(log, "r")
+  if f then
+    local size = f:seek("end")
+    f:close()
+    if size and size > 5 * 1024 * 1024 then
+      local w = io.open(log, "w")
+      if w then w:close() end
+    end
+  end
+end
+
 -- Load the sketchybar-package and prepare the helper binaries
 require("helpers")
 require("init")

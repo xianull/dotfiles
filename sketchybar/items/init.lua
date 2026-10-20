@@ -1,11 +1,16 @@
-require("items.apple")
-require("items.menus")
-require("items.spaces")
-require("items.front_app")
-require("items.calendar")
-require("items.widgets")
+-- 加载哪些组件由方案决定（helpers/layout.lua），默认就是下面这份
 -- Media last: no capsule; cover stays right, text grows left
-require("items.media")
+for _, mod in ipairs(require("helpers.layout").list("items", {
+  "items.apple",
+  "items.menus",
+  "items.spaces",
+  "items.front_app",
+  "items.calendar",
+  "items.widgets",
+  "items.media",
+})) do
+  require(mod)
+end
 
 -- Capsule backgrounds — 左栏统一；日历单独；媒体无胶囊
 local colors = require("colors")

@@ -67,3 +67,8 @@ otty/recipes/.migrated-from-statedb
 
 # 日志
 *.log
+
+# SketchyBar 当前方案 / 配色（本机运行时状态，苹果菜单和 sbar-layout 会改）
+sketchybar/.layout
+sketchybar/.theme
+sketchybar/.theme_mode
