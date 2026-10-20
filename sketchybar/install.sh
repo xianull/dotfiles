@@ -1,16 +1,20 @@
-## 关闭最近使用的空间
-defaults write com.apple.dock mru-spaces -bool false
-killall Dock
+#!/bin/bash
+# SketchyBar 依赖：命令行工具、图标字体、SbarLua、helper 二进制。
+# 主 install.sh 会调用；也可以单独跑。
 
-## 安装包
-brew install nowplaying-cli jq
+DIR="$(cd "$(dirname "$0")" && pwd)"
 
-# Installing Fonts
-git clone git@github.com:shaunsingh/SFMono-Nerd-Font-Ligaturized.git /tmp/SFMono_Nerd_Font
-mv /tmp/SFMono_Nerd_Font/* $HOME/Library/Fonts
-rm -rf /tmp/SFMono_Nerd_Font/
+## 组件里用到的命令行工具
+brew install lua nowplaying-cli jq switchaudio-osx cava
 
-curl -L https://github.com/kvndrsslr/sketchybar-app-font/releases/download/v2.0.28/sketchybar-app-font.ttf -o $HOME/Library/Fonts/sketchybar-app-font.ttf
+## 应用图标字体
+mkdir -p "$HOME/Library/Fonts"
+curl -fsSL https://github.com/kvndrsslr/sketchybar-app-font/releases/download/v2.0.28/sketchybar-app-font.ttf \
+    -o "$HOME/Library/Fonts/sketchybar-app-font.ttf"
 
 # SbarLua (must match Homebrew lua; rebuild after `brew upgrade lua`)
-(git clone https://github.com/FelixKratz/SbarLua.git /tmp/SbarLua && cd /tmp/SbarLua/ && make install && rm -rf /tmp/SbarLua/)
+rm -rf /tmp/SbarLua
+git clone https://github.com/FelixKratz/SbarLua.git /tmp/SbarLua && (cd /tmp/SbarLua && make install) && rm -rf /tmp/SbarLua
+
+## helper 二进制：不预先编译的话，sketchybar 第一次启动会同步 make，期间栏是空的
+(cd "$DIR/helpers" && make)

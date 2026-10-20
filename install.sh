@@ -1,21 +1,26 @@
 #!/bin/bash
 
 # ==========================================================
-# 自动化安装脚本 (yabai, kitty, tmux, spicetify, herdr, skills, pi, zsh)
+# 新机器部署：git clone 到 ~/dotfiles 后运行 ./install.sh
+# 可以重复跑：装过的跳过；目标是真实文件/目录的先备份成 .bak.<时间戳> 再链接
 # ==========================================================
 
 DOTFILES="$HOME/dotfiles"
 
 echo "🚀 开始环境部署..."
 
-# 1. 基础依赖安装
+# 1. 基础依赖
 echo "📦 正在安装基础依赖..."
 if ! command -v brew &> /dev/null; then
     echo "❌ 未检测到 Homebrew，请先安装 Homebrew 再运行此脚本。"
     exit 1
 fi
 
-brew install nowplaying-cli jq yabai skhd kitty tmux spicetify-cli
+brew tap asmvik/formulae      # yabai, skhd
+brew tap FelixKratz/formulae  # sketchybar, borders
+brew install yabai skhd sketchybar borders \
+    tmux neovim fzf jq btop neofetch git-lfs node@22 jenv spicetify-cli
+brew install --cask ghostty kitty font-hack-nerd-font font-maple-mono-cn font-sf-pro
 
 # 2. 系统设置优化
 echo "⚙️ 正在优化 macOS 系统设置..."
@@ -25,66 +30,90 @@ defaults write com.apple.dock mru-spaces -bool false
 defaults write NSGlobalDomain NSWindowResizeTime -float 0.001
 killall Dock
 
-# 3. 建立配置文件软连接 (Symbolic Links)
+# 3. oh-my-zsh + powerlevel10k + 插件（zshrc 依赖它们）
+echo "🐚 正在安装 oh-my-zsh 与插件..."
+clone() { [ -d "$2" ] || git clone --depth=1 "https://github.com/$1.git" "$2"; }
+ZSH_CUSTOM="$HOME/.oh-my-zsh/custom"
+clone ohmyzsh/ohmyzsh                   "$HOME/.oh-my-zsh"
+clone romkatv/powerlevel10k             "$ZSH_CUSTOM/themes/powerlevel10k"
+clone zsh-users/zsh-autosuggestions     "$ZSH_CUSTOM/plugins/zsh-autosuggestions"
+clone zsh-users/zsh-syntax-highlighting "$ZSH_CUSTOM/plugins/zsh-syntax-highlighting"
+
+# 4. 软链
 echo "🔗 正在建立软连接..."
-mkdir -p "$HOME/.config"
+link() {
+    local src="$DOTFILES/$1" dst="$2"
+    mkdir -p "$(dirname "$dst")"
+    if [ -e "$dst" ] && [ ! -L "$dst" ]; then
+        mv "$dst" "$dst.bak.$(date +%s)"
+        echo "  已备份原有的 $dst"
+    fi
+    ln -sfn "$src" "$dst"
+}
 
-# zsh
-ln -sf "$DOTFILES/zsh/zshrc" "$HOME/.zshrc"
+# TPM 插件目录不进仓库（gitignore），先建出来再链接
+mkdir -p "$DOTFILES/tmux/plugins"
 
-# kitty
-ln -sfn "$DOTFILES/kitty" "$HOME/.config/kitty"
+link zsh/zshrc                       "$HOME/.zshrc"
+link zsh/zprofile                    "$HOME/.zprofile"
+link zsh/p10k.zsh                    "$HOME/.p10k.zsh"
+link git/config                      "$HOME/.config/git/config"
+link npm/npmrc                       "$HOME/.npmrc"
+link conda/condarc                   "$HOME/.condarc"
+link tmux/.tmux.conf                 "$HOME/.tmux.conf"
+link tmux                            "$HOME/.config/tmux"
+link tmux/plugins                    "$HOME/.tmux/plugins"
+link nvim                            "$HOME/.config/nvim"
+link ghostty                         "$HOME/.config/ghostty"
+link kitty                           "$HOME/.config/kitty"
+link otty                            "$HOME/.config/otty"
+link iterm2                          "$HOME/.config/iterm2"
+link yabai                           "$HOME/.config/yabai"
+link skhd                            "$HOME/.config/skhd"
+link sketchybar                      "$HOME/.config/sketchybar"
+link sketchybar/scripts/sbar-layout  "$HOME/.local/bin/sbar-layout"
+link borders                         "$HOME/.config/borders"
+link btop                            "$HOME/.config/btop"
+link neofetch                        "$HOME/.config/neofetch"
+link raycast                         "$HOME/.config/raycast"
+link spicetify                       "$HOME/.config/spicetify"
+# herdr: 只链配置，session / 日志留在本机
+link herdr/config.toml               "$HOME/.config/herdr/config.toml"
+# pi agent settings + 插件清单（auth.json / models.json / sessions / Otty extensions 留在本机）
+link pi/settings.json                "$HOME/.pi/agent/settings.json"
+link pi/npm/package.json             "$HOME/.pi/agent/npm/package.json"
+link pi/npm/package-lock.json        "$HOME/.pi/agent/npm/package-lock.json"
 
-# yabai & skhd
-ln -sfn "$DOTFILES/yabai" "$HOME/.config/yabai"
-ln -sfn "$DOTFILES/skhd" "$HOME/.config/skhd"
-
-# tmux
-# 采用现代 XDG 路径
-ln -sfn "$DOTFILES/tmux" "$HOME/.config/tmux"
-
-# spicetify
-ln -sfn "$DOTFILES/spicetify" "$HOME/.config/spicetify"
-
-# otty (terminal)
-ln -sfn "$DOTFILES/otty" "$HOME/.config/otty"
-
-# herdr (config only; session/logs stay local)
-mkdir -p "$HOME/.config/herdr"
-ln -sfn "$DOTFILES/herdr/config.toml" "$HOME/.config/herdr/config.toml"
-
-# pi agent settings + plugin package manifests
-# (auth.json / models.json / sessions / Otty extensions stay local)
-mkdir -p "$HOME/.pi/agent/npm"
-ln -sfn "$DOTFILES/pi/settings.json" "$HOME/.pi/agent/settings.json"
-ln -sfn "$DOTFILES/pi/npm/package.json" "$HOME/.pi/agent/npm/package.json"
-ln -sfn "$DOTFILES/pi/npm/package-lock.json" "$HOME/.pi/agent/npm/package-lock.json"
 if command -v npm &> /dev/null; then
     (cd "$HOME/.pi/agent/npm" && npm install --omit=dev) \
         || echo "⚠️ pi npm 插件安装失败，可稍后: cd ~/.pi/agent/npm && npm install"
 fi
 
-# 4. 字体安装
-echo "🔡 正在安装 SFMono Nerd Font 与 Sketchybar 字体..."
-mkdir -p "$HOME/Library/Fonts"
+# 5. tmux 插件
+echo "🧩 正在安装 tmux 插件..."
+clone tmux-plugins/tpm "$DOTFILES/tmux/plugins/tpm"
+"$DOTFILES/tmux/plugins/tpm/bin/install_plugins" > /dev/null \
+    || echo "⚠️ tmux 插件安装失败，可稍后在 tmux 里按 prefix + M-F12"
 
-# SFMono Nerd Font
-if [ ! -d "/tmp/SFMono_Nerd_Font" ]; then
-    git clone git@github.com:shaunsingh/SFMono-Nerd-Font-Ligaturized.git /tmp/SFMono_Nerd_Font
-    mv /tmp/SFMono_Nerd_Font/* "$HOME/Library/Fonts/"
-    rm -rf /tmp/SFMono_Nerd_Font/
-fi
+# 6. SketchyBar（命令行依赖、图标字体、SbarLua、helper 编译）
+echo "📊 正在配置 SketchyBar..."
+bash "$DOTFILES/sketchybar/install.sh" || echo "⚠️ SketchyBar 依赖安装失败，可稍后运行 ~/dotfiles/sketchybar/install.sh"
 
-# Sketchybar App Font
-curl -L https://github.com/kvndrsslr/sketchybar-app-font/releases/download/v2.0.28/sketchybar-app-font.ttf -o "$HOME/Library/Fonts/sketchybar-app-font.ttf"
+# 7. 后台服务
+echo "🪟 正在启动 yabai / skhd / sketchybar..."
+yabai --start-service 2> /dev/null || true
+skhd --start-service 2> /dev/null || true
+brew services start sketchybar
+# yabai 卡死自愈，每分钟检查一次
+cp "$DOTFILES/yabai/com.user.yabai-watchdog.plist" "$HOME/Library/LaunchAgents/"
+launchctl bootstrap "gui/$(id -u)" "$HOME/Library/LaunchAgents/com.user.yabai-watchdog.plist" 2> /dev/null || true
 
-# 5. 特殊组件初始化
+# 8. Spicetify
 echo "🛠 正在初始化 Spicetify..."
-# 确保权限
 chmod +x "$DOTFILES/spicetify/CustomApps" &> /dev/null
 spicetify backup apply &> /dev/null || echo "⚠️ Spicetify 注入失败，可能需要手动重装 Spotify。"
 
-# 6. Agent skills (npx skills; 正文不进 git，按清单重装)
+# 9. Agent skills (npx skills; 正文不进 git，按清单重装)
 if command -v npx &> /dev/null; then
     echo "🧠 正在安装 agent skills..."
     bash "$DOTFILES/skills/install.sh" || echo "⚠️ skills 安装失败，可稍后手动运行 ~/dotfiles/skills/install.sh"
@@ -93,6 +122,8 @@ else
 fi
 
 echo "✅ 安装完成！"
-echo "👉 请运行 'source ~/.zshrc' 使配置立即生效。"
-echo "👉 如果是首次安装 yabai，请记得在系统设置中授予 '屏幕录制' 和 '辅助功能' 权限。"
+echo "👉 请运行 'exec zsh' 使配置立即生效。"
+echo "👉 在系统设置里给 yabai、skhd 授予「辅助功能」权限，给 yabai 授予「屏幕录制」权限。"
+echo "👉 yabai 脚本扩展（透明度、动画、空间操作）需先在恢复模式里部分关闭 SIP，再运行 ~/dotfiles/yabai/init.sh。"
+echo "👉 需手动安装：miniconda（装到 ~/.miniconda）、uv（官方安装脚本）、霞鹜文楷等宽 Medium 字体（Ghostty 中文字形）。"
 echo "👉 Claude 插件清单见 ~/dotfiles/claude/（需在 Claude Code 内按 marketplace 重装）。"
