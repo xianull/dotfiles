@@ -1,9 +1,9 @@
 # OPENSPEC:START
 # OpenSpec shell completions configuration
+# compinit 交给 oh-my-zsh（下面 source $ZSH/oh-my-zsh.sh 时会跑）
 fpath=("/Users/xianull/.oh-my-zsh/custom/completions" $fpath)
-autoload -Uz compinit
-compinit
 # OPENSPEC:END
+fpath=(~/.grok/completions/zsh $fpath)
 
 # Enable Powerlevel10k instant prompt. Should stay close to the top of ~/.zshrc.
 # Initialization code that may require console input (password prompts, [y/n]
@@ -115,26 +115,26 @@ source $ZSH/oh-my-zsh.sh
 # Example aliases
 # alias zshconfig="mate ~/.zshrc"
 # alias ohmyzsh="mate ~/.oh-my-zsh"
-export NVM_DIR=~/.nvm
-source $(brew --prefix nvm)/nvm.sh
+# Node 用 brew 的 node@22（见下方 PATH）。nvm 不再启动时加载（~400ms）；
+# 需要时：export NVM_DIR=~/.nvm; source /opt/homebrew/opt/nvm/nvm.sh
 
-# >>> conda initialize >>>
-# !! Contents within this block are managed by 'conda init' !!
-__conda_setup="$('/Users/xianull/.miniconda/bin/conda' 'shell.zsh' 'hook' 2> /dev/null)"
-if [ $? -eq 0 ]; then
-    eval "$__conda_setup"
-else
-    if [ -f "/Users/xianull/.miniconda/etc/profile.d/conda.sh" ]; then
-        . "/Users/xianull/.miniconda/etc/profile.d/conda.sh"
-    else
-        export PATH="/Users/xianull/.miniconda/bin:$PATH"
-    fi
+# conda（替换了 `conda init` 生成的块；别再跑 `conda init zsh`，它会再加回来）
+# `conda shell.zsh hook` 的输出就是 conda.sh，直接 source，省一次 python（~280ms）。
+# 新 shell 里激活 base 也不走 `conda activate`（又一次 python，~270ms），
+# 直接设它会 export 的那几个变量。`conda activate / deactivate` 照常用。
+# ponytail: base 激活是照 conda 25.5 的输出手写的；base 以后加了
+# etc/conda/activate.d 脚本，或升级后行为不对，就把 if 块换成 `conda activate base`
+if [[ -f "$HOME/.miniconda/etc/profile.d/conda.sh" ]]; then
+  . "$HOME/.miniconda/etc/profile.d/conda.sh"
+  if [[ ${CONDA_SHLVL:-0} == 0 ]]; then
+    path=("$HOME/.miniconda/bin" $path)
+    unset _CE_M _CE_CONDA
+    export CONDA_PREFIX="$HOME/.miniconda" CONDA_SHLVL=1 CONDA_DEFAULT_ENV=base CONDA_PROMPT_MODIFIER='(base) '
+  fi
 fi
-unset __conda_setup
-# <<< conda initialize <<<
 
 export PATH="$HOME/.jenv/bin:$PATH"
-eval "$(jenv init -)"
+command -v jenv >/dev/null && eval "$(jenv init -)"
 
 
 export PATH=$PATH:/Users/xianull/.spicetify
@@ -169,7 +169,7 @@ alias v="nvim"
 # SSH aliases
 alias h200="ssh jcw@192.168.112.113"
 alias h200proxy="ssh -f -N -C -o ServerAliveInterval=60 -o ExitOnForwardFailure=yes -R 17891:127.0.0.1:7890 jcw@192.168.112.113"
-alias 4090="ssh jcw@192.198.112.108 -p 2212"
+alias 4090="ssh jcw@192.168.112.108 -p 2212"
 
 # Claude Code environment variables (added by setup script)
 # API keys live in gitignored zsh/secrets.zsh
@@ -180,17 +180,12 @@ export PATH="/Users/xianull/.claude/bin:$PATH"
 # bun completions
 [ -s "/Users/xianull/.bun/_bun" ] && source "/Users/xianull/.bun/_bun"
 
-# Added by Antigravity
-export PATH="/Users/xianull/.antigravity/antigravity/bin:$PATH"
-
-. "$HOME/.local/bin/env"
+[[ -f "$HOME/.local/bin/env" ]] && . "$HOME/.local/bin/env"  # uv
 
 # fzf
 [[ -f ~/dotfiles/fzf/fzf.zsh ]] && source ~/dotfiles/fzf/fzf.zsh
 
-# To customize prompt, run `p10k configure` or edit ~/dotfiles/zsh/p10k.zsh.
-[[ ! -f ~/dotfiles/zsh/p10k.zsh ]] || source ~/dotfiles/zsh/p10k.zsh
-CLAUDE_CODE_NO_FLICKER=1
+export CLAUDE_CODE_NO_FLICKER=1
 # Sync hffm project to HNYY_H100-3
 
 alias syncsctfm="rsync -rlptzv --exclude='__pycache__' --exclude='*.pyc' --exclude='.DS_Store'  --exclude='notebooks'  --exclude='.venv'  --exclude='.git' --exclude='runs' ./ HNYY_H100-3:/gpfs/flash/home/jcw/projects/sctfm/"
@@ -203,8 +198,7 @@ export PATH="/Users/xianull/.local/bin:$PATH"
 
 # >>> grok installer >>>
 export PATH="$HOME/.grok/bin:$PATH"
-fpath=(~/.grok/completions/zsh $fpath)
-autoload -Uz compinit && compinit -C
+# 补全目录挪到 oh-my-zsh 之前（OPENSPEC 下面），由 OMZ 统一 compinit
 # <<< grok installer <<<
 
 # >>> otty shell integration >>>
@@ -214,3 +208,6 @@ if [ -n "$OTTY_SHELL_INTEGRATION" ] && [ -r "$OTTY_SHELL_INTEGRATION/otty-integr
   . "$OTTY_SHELL_INTEGRATION/otty-integration.zsh"
 fi
 # <<< otty shell integration <<<
+
+# PATH / fpath 去重，保留靠前的那份（放最后：export PATH=... 不会触发 -U 去重）
+typeset -U path fpath
