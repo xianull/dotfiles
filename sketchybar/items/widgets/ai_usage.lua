@@ -4,15 +4,20 @@ local coerce = require("helpers.coerce")
 
 local HOME = os.getenv("HOME") or ""
 local ICON_DIR = HOME .. "/.config/sketchybar/helpers/ai_icons"
-local SCRIPT = [[export PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:$PATH"; "$CONFIG_DIR/helpers/ai_usage.sh"]]
+-- AI_USAGE_FG：主题前景色，脚本画仪表时用它当“没事”的颜色（和栏上图标同色）；换主题会重载，这里跟着变
+local SCRIPT = string.format(
+  [[export PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:$PATH"; AI_USAGE_FG=%06x "$CONFIG_DIR/helpers/ai_usage.sh"]],
+  colors.white & 0xffffff
+)
 
 -- CodexBar menu card: 280pt. Insets live in the PNGs / column widths
 -- so SketchyBar padding cannot widen the popup and leave an empty gutter.
 local POPUP_W = 280
 local PAD = 18
--- 两列必须凑满 POPUP_W - 2*PAD，文字行总宽才等于进度条图片宽度（280），
--- 否则文字行比图片宽 36pt，进度条看起来相对文字向内缩。
-local COL = (POPUP_W - PAD * 2) / 2
+-- 两列各占一半（140）。注意：显式设了 width 的 icon / label，padding 是包含在 width 里的，
+-- 不会另外再加；所以两列 140 + 140 = 280 才等于进度条图片宽度，文字行的右端才和进度条右端对齐。
+-- （之前按 (280 - 2*18) / 2 = 122 算，实际只有 244，右边短了 36pt。）
+local COL = POPUP_W / 2
 -- Grok 的统一计费有 4 个产品，再加 On-demand，所以槽位要留够
 local MAX_WINDOWS = 6
 local MAX_COSTS = 4
@@ -20,39 +25,52 @@ local BAR_H = 14
 local CHART_H = 36
 local GAP_H = 8
 
-local PROVIDERS = {
-  grok = {
-    name = "widgets.grok",
-    icon = ICON_DIR .. "/grok_bar.png",
-    url = "https://grok.com/?_s=usage",
-    title = "Grok",
-  },
-  cursor = {
-    name = "widgets.cursor",
-    icon = ICON_DIR .. "/cursor_bar.png",
-    url = "https://cursor.com/dashboard?tab=usage",
-    title = "Cursor",
-  },
-}
+local CONFIG_DIR = HOME .. "/.config/sketchybar"
+local CONF = CONFIG_DIR .. "/ai_usage.conf"
+
+-- helpers/ai_providers.tsv：id <TAB> 显示名 <TAB> 来源 <TAB> 用量页网址。helpers/ai_usage.py 读同一份。
+local CATALOG, PROVIDERS = {}, {}
+local function add_provider(id, title, url)
+  CATALOG[#CATALOG + 1] = id
+  PROVIDERS[id] = { name = "widgets." .. id, icon = ICON_DIR .. "/" .. id .. "_bar.png", url = url, title = title }
+end
+local catalog_file = io.open(CONFIG_DIR .. "/helpers/ai_providers.tsv", "r")
+if catalog_file then
+  for line in catalog_file:lines() do
+    local id, title, _, url = line:match("^([^#\t][^\t]*)\t([^\t]*)\t([^\t]*)\t?(.*)$")
+    if id then
+      add_provider(id, title, url)
+    end
+  end
+  catalog_file:close()
+end
+if #CATALOG == 0 then -- 目录文件丢了也别让整条栏起不来
+  add_provider("cursor", "Cursor", "https://cursor.com/dashboard?tab=usage")
+  add_provider("grok", "Grok", "https://grok.com/?_s=usage")
+end
 local DEFAULT_ORDER = { "cursor", "grok" }
 
 -- ai_usage.conf：每行一个 id，从上到下 = 栏内从左到右。helpers/ai_usage.py 读同一份。
+-- 没有这个文件才用默认；文件在但全注释 = 设置页里全关了。
 local function read_order()
+  local file = io.open(CONF, "r")
   local order, seen = {}, {}
-  local file = io.open(HOME .. "/.config/sketchybar/ai_usage.conf", "r")
-  if file then
-    for line in file:lines() do
-      local id = line:gsub("#.*$", ""):match("^%s*(.-)%s*$")
-      if id and PROVIDERS[id] and not seen[id] then
-        seen[id] = true
-        order[#order + 1] = id
-      end
+  local function take(id)
+    if id and PROVIDERS[id] and not seen[id] then
+      seen[id] = true
+      order[#order + 1] = id
     end
-    file:close()
   end
-  if #order == 0 then
-    return DEFAULT_ORDER
+  if not file then
+    for _, id in ipairs(DEFAULT_ORDER) do
+      take(id)
+    end
+    return order
   end
+  for line in file:lines() do
+    take((line:gsub("#.*$", ""):match("^%s*(.-)%s*$") or ""):lower())
+  end
+  file:close()
   return order
 end
 
@@ -107,6 +125,21 @@ local function split_tabs(line)
     i = i + 1
   end
   return f
+end
+
+local function age_text(ts)
+  if not ts then
+    return ""
+  end
+  local d = os.time() - ts
+  if d < 45 then
+    return "刚刚已更新"
+  elseif d < 3600 then
+    return string.format("%d 分钟前已更新", math.max(1, math.floor(d / 60 + 0.5)))
+  elseif d < 86400 then
+    return string.format("%d 小时前已更新", math.floor(d / 3600))
+  end
+  return string.format("%d 天前已更新", math.floor(d / 86400))
 end
 
 local function fmt_money(n)
@@ -167,9 +200,12 @@ for _, id in ipairs(ORDER) do
   cost_days[id] = 30
 end
 local apply
+local open_settings
+local force_refresh
 
 local function pop_item(parent, id, opts)
   opts = opts or {}
+  local extra = opts.top_extra or 0
   local left_only = opts.label_drawing == false
   return sbar.add("item", id, {
     position = "popup." .. parent,
@@ -187,6 +223,7 @@ local function pop_item(parent, id, opts)
       align = "left",
       padding_left = PAD,
       padding_right = 0,
+      y_offset = -extra / 2,
     },
     label = {
       string = opts.label or "",
@@ -200,9 +237,11 @@ local function pop_item(parent, id, opts)
       align = opts.align or "right",
       padding_left = 0,
       padding_right = PAD,
+      y_offset = -extra / 2,
     },
     drawing = opts.drawing ~= false,
-    background = { drawing = false, height = opts.height or 22 },
+    background = extra > 0 and { drawing = true, color = { alpha = 0 }, height = 16 + extra }
+      or { drawing = false, height = opts.height or 22 },
   })
 end
 
@@ -243,14 +282,30 @@ end
 -- 居中，所以 icon 的左右 padding 只决定总宽：给 22/8 时两侧实际各是 (22+8)/2=15，
 -- 左边距会被匀走一半。因此 icon padding 必须对称，左侧留白改用独立 spacer item。
 -- 视觉：[ 12 spacer | 8 | 24px icon | 8 | % | 6+8 | 24px icon | 8 | % | 16 ]
-local ICON_PX = 24
+local GAUGE = (settings.ai_usage or {}).gauge
+local ICON_PX = GAUGE and 18 or 24
 local ICON_SCALE = ICON_PX / 64
-local ICON_PAD = 8
-local INSET_LEFT = 12
+local ICON_PAD = GAUGE and 6 or 8
+-- 双线微型仪表（zen 方案开启，见 layouts/zen.lua）：数字换成 helpers/ai_usage.py 画的上粗下细两条。
+-- 图片贴在 label 背景上，宽度必须等于 label 宽度（padding 清零），否则图片会在 padding 区里居中而偏位；
+-- 所以右侧留白用 tail 占位 item，左侧 icon 自带 8pt padding，inset 只补 4。
+local MINI_W, MINI_H = 42, 12 -- 与 ai_usage.py 的 MINI_W / MINI_H 一致
+local INSET_LEFT = GAUGE and 6 or 12
 local INSET_RIGHT = 18
 local MID_GAP = 6
 -- Maple Mono 12 下 "100%" 大约 36–40pt，30pt 会被胶囊圆角裁掉
 local PCT_W = 44
+
+-- 最先添加 → position=right 下位于最右
+local tail = GAUGE and sbar.add("item", "widgets.ai_usage.tail", {
+  position = "right",
+  width = 8,
+  padding_left = 0,
+  padding_right = 0,
+  icon = { drawing = false },
+  label = { drawing = false },
+  background = { drawing = false },
+})
 
 for idx = #ORDER, 1, -1 do
   local id = ORDER[idx]
@@ -288,10 +343,17 @@ for idx = #ORDER, 1, -1 do
       font = { family = settings.font.numbers, size = 12.0 },
       color = colors.grey,
       align = "left",
-      width = PCT_W,
+      width = GAUGE and MINI_W or PCT_W,
       padding_left = 0,
-      padding_right = is_right and INSET_RIGHT or MID_GAP,
+      padding_right = (GAUGE and 0) or (is_right and INSET_RIGHT or MID_GAP),
       y_offset = 0,
+      background = {
+        drawing = false,
+        color = colors.transparent,
+        height = MINI_H,
+        corner_radius = 0,
+        image = { string = "", scale = 0.5 },
+      },
     },
     -- 一次 refresh 就会刷新所有 provider，所以只让第一个定时驱动
     update_freq = (idx == 1) and 120 or 0,
@@ -310,12 +372,13 @@ for idx = #ORDER, 1, -1 do
     },
   })
 
+  pop_gap(spec.name, spec.name .. ".gap_top"):set({ drawing = true })
   local rows = {
     header = pop_item(spec.name, spec.name .. ".header", {
       icon = spec.title,
       icon_size = 13.0,
-      label = "",
-      size = 11.0,
+      label = "↻",
+      size = 13.0,
       height = 22,
     }),
     -- 签名读数：大号百分比 + 倒计时，这是整张卡片唯一放大的元素
@@ -365,7 +428,7 @@ for idx = #ORDER, 1, -1 do
         label = "",
         size = 11.0,
         drawing = false,
-        height = 18,
+        top_extra = (i > 1) and 8 or 0, -- 第一个窗口前已有 gap_head；后面的窗口之间留出分组的空白
       }),
       bar = pop_bar(spec.name, prefix .. ".bar"),
       hint = pop_item(spec.name, prefix .. ".hint", {
@@ -436,13 +499,19 @@ for idx = #ORDER, 1, -1 do
   end
 
   rows.gap_open = pop_gap(spec.name, spec.name .. ".gap_open")
+  -- 页脚：左边打开用量页，右边是“xx 前已更新”
   rows.open = pop_item(spec.name, spec.name .. ".open", {
     icon = "打开用量页  ↗",
     icon_color = colors.blue,
     icon_size = 12.0,
-    label_drawing = false,
+    label = "",
+    size = 11.0,
     height = 22,
   })
+  pop_gap(spec.name, spec.name .. ".gap_end"):set({ drawing = true })
+  rows.header:subscribe("mouse.clicked", function()
+    force_refresh(id)
+  end)
   rows.open:subscribe("mouse.clicked", function()
     sbar.exec("open " .. spec.url)
     item:set({ popup = { drawing = false } })
@@ -461,6 +530,21 @@ for idx = #ORDER, 1, -1 do
   popups[id] = rows
 end
 
+-- 一家都没开时胶囊里只剩一个入口，不然设置页没地方点出来
+local stub
+if #ORDER == 0 then
+  stub = sbar.add("item", "widgets.ai_usage.stub", {
+    position = "right",
+    padding_left = 0,
+    padding_right = 0,
+    icon = { string = "AI", color = colors.grey, font = { family = settings.font.text, size = 12.0 }, padding_left = 8, padding_right = 4 },
+    label = { string = "＋", color = colors.grey, font = { family = settings.font.text, size = 12.0 }, padding_left = 0, padding_right = 10 },
+  })
+  stub:subscribe("mouse.clicked", function()
+    open_settings()
+  end)
+end
+
 -- 最后添加 → position=right 下位于最左，撑出胶囊左侧留白（default.lua 的 5/5 要清零）
 local inset = sbar.add("item", "widgets.ai_usage.inset", {
   position = "right",
@@ -476,9 +560,15 @@ local members = { inset.name }
 for _, id in ipairs(ORDER) do
   members[#members + 1] = items[id].name
 end
+if tail then
+  members[#members + 1] = tail.name
+end
+if stub then
+  members[#members + 1] = stub.name
+end
 
 local capset = settings.capsule or {}
-sbar.add("bracket", "widgets.ai_usage.bracket", members, {
+local bracket = sbar.add("bracket", "widgets.ai_usage.bracket", members, {
   padding_left = 0,
   padding_right = 0,
   background = {
@@ -488,7 +578,131 @@ sbar.add("bracket", "widgets.ai_usage.bracket", members, {
     corner_radius = capset.corner_radius or 12,
     height = capset.height or 30,
   },
+  popup = {
+    align = "center",
+    height = 24,
+    blur_radius = 50,
+    y_offset = 8,
+    background = {
+      color = colors.popup.bg,
+      border_color = colors.with_alpha(colors.white, 0.08),
+      border_width = 1,
+      corner_radius = 16,
+    },
+  },
 })
+
+-- 设置页（对应 CodexBar 设置里的 Providers 一栏）：右键用量胶囊，或苹果菜单右键 → AI 用量。
+-- 点一下开 / 关一家订阅 → 改写 ai_usage.conf → 稍等一下重启 SketchyBar。
+-- 重启走 launchd，和 sbar-layout 一样：组件数量变化大时原地 --reload 会段错误。连点几下只重启一次。
+sbar.add("event", "ai_usage_settings")
+local enabled, order = {}, {}
+for _, id in ipairs(ORDER) do
+  enabled[id] = true
+  order[#order + 1] = id
+end
+
+local function write_conf()
+  local file = io.open(CONF, "w")
+  if not file then
+    return false
+  end
+  file:write("# SketchyBar AI 订阅用量 —— 设置页（右键用量胶囊 / 苹果菜单右键 → AI 用量）生成，也可以手改。\n")
+  file:write("# 每行一个 provider id，从上到下 = 栏内从左到右；行首加 # = 隐藏。\n")
+  file:write("# 可选项和来源见 helpers/ai_providers.tsv。\n\n")
+  for _, id in ipairs(order) do
+    file:write(id, "\n")
+  end
+  for _, id in ipairs(CATALOG) do
+    if not enabled[id] then
+      file:write("# ", id, "\n")
+    end
+  end
+  file:close()
+  return true
+end
+
+local settings_header = sbar.add("item", "widgets.ai_usage.set.header", {
+  position = "popup." .. bracket.name,
+  icon = { string = "AI 用量", color = colors.white, font = { size = 13.0 }, padding_left = 12 },
+  label = { string = "点击开关 · 自动重载", color = colors.grey, font = { size = 11.0 }, padding_right = 12 },
+})
+settings_header:subscribe("mouse.clicked", function()
+  bracket:set({ popup = { drawing = false } })
+end)
+
+local restarts = 0
+local function schedule_restart()
+  restarts = restarts + 1
+  local mine = restarts
+  settings_header:set({ label = { string = "即将重载…", color = colors.yellow } })
+  sbar.exec("sleep 1.5", function()
+    if mine ~= restarts then
+      return
+    end
+    sbar.exec([[launchctl kickstart -k "gui/$(id -u)/sh.brew.sketchybar" 2>/dev/null || /opt/homebrew/bin/sketchybar --reload]])
+  end)
+end
+
+local function paint_row(id)
+  local on = enabled[id]
+  sbar.set("widgets.ai_usage.set." .. id, {
+    icon = { string = on and "●" or "○", color = on and colors.green or colors.grey },
+    label = { color = on and colors.white or colors.grey },
+  })
+end
+
+for _, id in ipairs(CATALOG) do
+  local on = enabled[id]
+  local row = sbar.add("item", "widgets.ai_usage.set." .. id, {
+    position = "popup." .. bracket.name,
+    icon = {
+      string = on and "●" or "○",
+      color = on and colors.green or colors.grey,
+      font = { size = 9.0 },
+      padding_left = 12,
+      padding_right = 0,
+    },
+    label = {
+      string = PROVIDERS[id].title,
+      color = on and colors.white or colors.grey,
+      font = { size = 13.0 },
+      padding_left = 6,
+      padding_right = 12,
+    },
+  })
+  row:subscribe("mouse.clicked", function()
+    if enabled[id] then
+      enabled[id] = nil
+      for i, v in ipairs(order) do
+        if v == id then
+          table.remove(order, i)
+          break
+        end
+      end
+    else
+      enabled[id] = true
+      order[#order + 1] = id -- 新开的排在最右
+    end
+    paint_row(id)
+    if write_conf() then
+      schedule_restart()
+    end
+  end)
+end
+
+open_settings = function()
+  for _, other in pairs(items) do
+    other:set({ popup = { drawing = false } })
+  end
+  bracket:set({ popup = { drawing = "toggle" } })
+end
+bracket:subscribe("mouse.exited.global", function()
+  bracket:set({ popup = { drawing = false } })
+end)
+inset:subscribe("ai_usage_settings", function() -- 苹果菜单里的入口
+  open_settings()
+end)
 
 sbar.add("item", "widgets.ai_usage.padding", {
   position = "right",
@@ -516,17 +730,30 @@ apply = function(row)
   end
   latest[row.id] = row
 
-  item:set({
-    label = {
-      string = row.label or "--",
-      color = label_color(row.used, row.status),
-    },
-  })
+  -- 仪表只在有数据时画；没抓到就退回文字 "--"，免得空轨道被当成“用了 0%”
+  if GAUGE and (row.mini or "") ~= "" and (row.status == "ok" or row.status == "stale") then
+    item:set({ label = { string = " ", background = { drawing = true, image = { string = row.mini } } } })
+  else
+    item:set({
+      label = {
+        string = row.label or "--",
+        color = label_color(row.used, row.status),
+        background = { drawing = false },
+      },
+    })
+  end
 
   local p = popups[row.id]
+  local plan = row.plan or ""
+  local prefix = spec.title .. " "
+  if plan:sub(1, #prefix) == prefix then
+    plan = plan:sub(#prefix + 1)
+  elseif plan == spec.title then
+    plan = ""
+  end
   p.header:set({
     icon = { string = spec.title, color = colors.grey },
-    label = { string = (row.plan ~= "" and row.plan) or "—", color = colors.grey },
+    label = { string = (plan ~= "" and (plan .. "   ↻")) or "↻", color = colors.grey },
   })
 
   p.hero:set({
@@ -535,7 +762,7 @@ apply = function(row)
       color = label_color(row.used, row.status),
     },
     label = {
-      string = row.reset or "",
+      string = ((row.reset or "") ~= "" and (row.reset .. " 后重置")) or "",
       color = colors.grey,
     },
   })
@@ -697,6 +924,7 @@ apply = function(row)
   end
 
   p.gap_open:set({ drawing = true })
+  p.open:set({ label = { string = age_text(row.fetched) } })
 end
 
 local function parse_output(result)
@@ -721,6 +949,10 @@ local function parse_output(result)
       r.period_range = f[12] or ""
       r.remain_label = (f[13] ~= "" and f[13]) or "--"
       r.hint = f[14] or ""
+    elseif f[1] == "U" and rows[f[2]] then
+      rows[f[2]].fetched = tonumber_or_nil(f[3])
+    elseif f[1] == "M" and rows[f[2]] then
+      rows[f[2]].mini = f[3] or ""
     elseif f[1] == "E" and rows[f[2]] then
       rows[f[2]].extra_pct = tonumber_or_nil(f[3])
       rows[f[2]].extra_bar = f[4] or ""
@@ -770,6 +1002,7 @@ local function refresh()
     local parsed = parse_output(result)
     for _, id in ipairs(ORDER) do
       local row = parsed[id]
+      -- status = "auth"（key 过期 / 无效）不是临时故障：照样覆盖旧读数，把报错亮出来
       if row and row.seen and row.status ~= "error" and row.status ~= "missing" then
         apply(row)
       elseif row and row.seen and not latest[id] then
@@ -779,11 +1012,33 @@ local function refresh()
   end)
 end
 
+-- 卡片右上角的刷新：只刷这一家，绕过缓存 TTL（ai_usage.py --force，会等别的刷新跑完）
+local forcing = {}
+force_refresh = function(id)
+  if forcing[id] then
+    return
+  end
+  forcing[id] = true
+  popups[id].header:set({ label = { string = "刷新中…" } })
+  sbar.exec(SCRIPT .. " " .. id .. " --force", function(result)
+    forcing[id] = nil
+    local row = parse_output(result)[id]
+    if row and row.seen and (row.status ~= "error" or not latest[id]) then
+      apply(row)
+    elseif latest[id] then
+      apply(latest[id]) -- 没抓到：恢复原来的读数和按钮
+    end
+  end)
+end
+
 local function toggle_popup(id)
   local item = items[id]
   local drawing = item:query().popup.drawing == "off"
   item:set({ popup = { drawing = drawing } })
   if drawing then
+    if latest[id] then -- 打开时先把“xx 前已更新”算到现在，刷新结果回来再覆盖
+      popups[id].open:set({ label = { string = age_text(latest[id].fetched) } })
+    end
     for other, other_item in pairs(items) do
       if other ~= id then
         other_item:set({ popup = { drawing = false } })
@@ -795,19 +1050,28 @@ end
 
 for _, id in ipairs(ORDER) do
   local item = items[id]
-  item:subscribe("mouse.clicked", function()
-    toggle_popup(id)
+  item:subscribe("mouse.clicked", function(env)
+    if env.BUTTON == "right" then
+      open_settings()
+    else
+      toggle_popup(id)
+    end
   end)
   item:subscribe("mouse.exited.global", function()
     item:set({ popup = { drawing = false } })
   end)
 end
 
-items[ORDER[1]]:subscribe({ "routine", "system_woke", "forced" }, refresh)
+if ORDER[1] then
+  items[ORDER[1]]:subscribe({ "routine", "system_woke", "forced" }, refresh)
+end
 
 -- 源 PNG 是纯白，按当前主题重新着色后落到 /tmp，切主题时跟着变
 local TINT_DIR = "/tmp/sbar_ai_icons"
 local function tint_bar_icons()
+  if #ORDER == 0 then
+    return
+  end
   local c = colors.white
   local r = (c >> 16) & 0xff
   local g = (c >> 8) & 0xff

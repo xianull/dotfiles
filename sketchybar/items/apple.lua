@@ -73,6 +73,22 @@ layout_row:subscribe("mouse.clicked", function()
   sbar.exec(os.getenv("HOME") .. "/.config/sketchybar/scripts/sbar-layout")
 end)
 
+-- AI 用量：哪些订阅显示在栏上（设置页由 items/widgets/ai_usage.lua 提供，这里只负责打开它）
+local ai_usage_row = sbar.add("item", "theme.ai_usage", {
+  position = "popup." .. apple_bracket.name,
+  icon = { string = "AI 用量", color = colors.white, font = { size = 13.0 }, padding_left = 8 },
+  label = {
+    string = "设置  ⚙",
+    color = colors.grey,
+    font = { size = 11.0 },
+    padding_right = 8,
+  },
+})
+ai_usage_row:subscribe("mouse.clicked", function()
+  apple_bracket:set({ popup = { drawing = false } })
+  sbar.exec("sketchybar --trigger ai_usage_settings")
+end)
+
 -- Popup header with mode toggle
 local header = sbar.add("item", "theme.header", {
   position = "popup." .. apple_bracket.name,
@@ -104,6 +120,42 @@ sbar.add("item", "theme.divider", {
   label = { drawing = false },
   background = { color = colors.with_alpha(colors.grey, 0.2), height = 1 },
 })
+
+-- Wallpaper：跟壁纸顶部取色（深浅也跟壁纸走，所以亮 / 暗模式下都显示）
+local wallpaper_row = sbar.add("item", "theme.wallpaper", {
+  position = "popup." .. apple_bracket.name,
+  icon = {
+    string = current_scheme == "wallpaper" and "●" or "○",
+    color = colors.yellow,
+    font = { size = 9.0 },
+    padding_left = 10,
+    padding_right = 0,
+  },
+  label = {
+    string = "Wallpaper（跟壁纸取色）",
+    color = current_scheme == "wallpaper" and colors.white or colors.grey,
+    font = { size = 13.0 },
+    padding_left = 4,
+  },
+})
+wallpaper_row:subscribe("mouse.clicked", function()
+  color_schemes.save_current_scheme("wallpaper")
+  apple_bracket:set({ popup = { drawing = false } })
+  sbar.exec("sketchybar --reload")
+end)
+
+-- 选了 Wallpaper 才盯着壁纸：路径或修改时间变了就重载，重新取色（--key 不解码图片，很便宜）
+if current_scheme == "wallpaper" and colors.wallpaper_key then
+  local watcher = sbar.add("item", "theme.wallpaper_watch", { drawing = false, updates = true, update_freq = 30 })
+  watcher:subscribe({ "routine", "space_change", "system_woke" }, function()
+    sbar.exec(color_schemes.WALLPAPER_HELPER .. " --key", function(key)
+      key = tostring(key or ""):gsub("%s+$", "")
+      if key ~= "" and key ~= colors.wallpaper_key then
+        sbar.exec("sketchybar --reload")
+      end
+    end)
+  end)
+end
 
 -- Create theme item
 local function create_theme_item(key)
@@ -190,6 +242,10 @@ apple:subscribe("mouse.clicked", function(env)
         label = { color = k == new_current and colors.white or colors.grey }
       })
     end
+    wallpaper_row:set({
+      icon = { string = new_current == "wallpaper" and "●" or "○" },
+      label = { color = new_current == "wallpaper" and colors.white or colors.grey },
+    })
 
     -- Update visibility
     update_theme_visibility()

@@ -18,7 +18,9 @@ from __future__ import annotations
 
 import json
 import os
+import shutil
 import sqlite3
+import subprocess
 import sys
 import time
 import urllib.error
@@ -27,7 +29,25 @@ import urllib.request
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
-KNOWN_PROVIDERS = ("cursor", "grok")
+CATALOG_FILE = Path(__file__).with_name("ai_providers.tsv")
+
+
+def load_catalog():
+    """id → {title, kind, url}。Lua 读同一份（items/widgets/ai_usage.lua）。"""
+    cat = {}
+    try:
+        for line in CATALOG_FILE.read_text(encoding="utf-8").splitlines():
+            parts = line.split("\t")
+            if line.startswith("#") or len(parts) < 3:
+                continue
+            cat[parts[0]] = {"title": parts[1], "kind": parts[2], "url": parts[3] if len(parts) > 3 else ""}
+    except OSError:
+        pass
+    return cat
+
+
+CATALOG = load_catalog() or {"cursor": {"title": "Cursor", "kind": "native"}, "grok": {"title": "Grok", "kind": "native"}}
+KNOWN_PROVIDERS = tuple(CATALOG)
 DEFAULT_ORDER = ("cursor", "grok")
 CONFIG = Path(os.environ.get("SKETCHYBAR_CONFIG_DIR") or (Path.home() / ".config" / "sketchybar")) / "ai_usage.conf"
 TTL = int(os.environ.get("AI_USAGE_TTL", "90"))
@@ -45,13 +65,13 @@ def enabled_providers():
     try:
         lines = CONFIG.read_text().splitlines()
     except OSError:
-        return list(DEFAULT_ORDER)
+        return list(DEFAULT_ORDER)  # 没有配置文件才用默认；文件在但全注释 = 设置页里全关了
     out = []
     for line in lines:
         pid = line.split("#", 1)[0].strip().lower()
         if pid in KNOWN_PROVIDERS and pid not in out:
             out.append(pid)
-    return out or list(DEFAULT_ORDER)
+    return out
 
 
 PROVIDERS = tuple(enabled_providers())
@@ -215,11 +235,12 @@ def fmt_pace_hint(pace):
     return left or right
 
 
-def make_window(name, used, reset_iso, start_iso=None, shared=False):
-    pace = None if shared else usage_pace(used, start_iso, reset_iso)
+def make_window(name, used, reset_iso, start_iso=None, shared=False, paced=True):
+    pace = None if shared or not paced else usage_pace(used, start_iso, reset_iso)
     return {
         "name": name,
         "used": used,
+        "shared": shared,
         "label": fmt_pct(used),
         "hint": "" if shared else fmt_pace_hint(pace),
         "expected": None if shared or pace is None else pace["expected"],
@@ -258,7 +279,8 @@ INNER_PT = POPUP_PT - PAD_PT * 2
 
 
 def render_bar(pid, idx, percent, expected=None):
-    """8pt capsule: fill = used; optional tick = CodexBar expected-pace mark."""
+    """弹窗里的进度条，和栏上的仪表同一套画法：主题前景色填充，超前消耗才变橙 / 红，
+    细线刻度 = 按时间该用到哪儿。6pt 圆头。"""
     try:
         from PIL import Image, ImageDraw
     except ImportError:
@@ -266,37 +288,31 @@ def render_bar(pid, idx, percent, expected=None):
     BAR_DIR.mkdir(parents=True, exist_ok=True)
     path = BAR_DIR / f"{pid}_{idx}.png"
     scale = 2
-    width, height = POPUP_PT * scale, 8 * scale
+    width, height = POPUP_PT * scale, 6 * scale
     inset = PAD_PT * scale
     inner_w = INNER_PT * scale
     img = Image.new("RGBA", (width, height), (0, 0, 0, 0))
     draw = ImageDraw.Draw(img)
     radius = height / 2
     left, right = inset, inset + inner_w - 1
-    draw.rounded_rectangle((left, 0, right, height - 1), radius=radius, fill=(255, 255, 255, 40))
+    draw.rounded_rectangle((left, 0, right, height - 1), radius=radius, fill=FG + (38,))
     try:
         pct = max(0.0, min(100.0, float(percent)))
     except (TypeError, ValueError):
         pct = 0.0
-    fill_w = int(round((inner_w - 1) * pct / 100.0))
-    if pct >= 0.5 and fill_w > 0:
-        fill_w = max(fill_w, height)
-        fill_w = min(fill_w, inner_w - 1)
-        rgb = BAR_FILLS.get(pid, (16, 163, 127))
-        if pct >= 95:
-            rgb = (251, 73, 52)
-        elif pct >= 90:
-            rgb = (254, 128, 25)
-        draw.rounded_rectangle((left, 0, left + fill_w, height - 1), radius=radius, fill=rgb + (255,))
+    fill_w = 0
+    if pct >= 0.5:
+        fill_w = min(max(int(round((inner_w - 1) * pct / 100.0)), height), inner_w - 1)
+        draw.rounded_rectangle(
+            (left, 0, left + fill_w, height - 1), radius=radius, fill=pace_rgb(pid, pct, expected, FG) + (235,)
+        )
     if expected is not None:
         try:
-            exp = max(0.0, min(100.0, float(expected)))
+            x = left + int(round((inner_w - 1) * max(0.0, min(100.0, float(expected))) / 100.0))
         except (TypeError, ValueError):
-            exp = None
-        else:
-            x = left + int(round((inner_w - 1) * exp / 100.0))
-            tick = max(2, scale)
-            draw.rectangle((x - tick, 0, x + tick, height - 1), fill=(235, 219, 178, 220))
+            x = None
+        if x is not None:  # 压在填充上是暗线，落在空轨道上是亮线
+            draw.line((x, 0, x, height - 1), fill=(0, 0, 0, 150) if x <= left + fill_w and fill_w else FG + (190,), width=1)
     img.save(path)
     return str(path)
 
@@ -318,14 +334,14 @@ def render_cost_chart(pid, days, values):
     img = Image.new("RGBA", (width, height), (0, 0, 0, 0))
     draw = ImageDraw.Draw(img)
     baseline_y = height - 3
-    draw.rectangle((inset, baseline_y, inset + inner_w - 1, baseline_y + 1), fill=(255, 255, 255, 40))
+    draw.rectangle((inset, baseline_y, inset + inner_w - 1, baseline_y + 1), fill=FG + (38,))
     n = len(values)
     gap = 4 if n <= 10 else 2
     bar_w = max(6, (inner_w - gap * (n + 1)) // n)
     total = n * bar_w + (n - 1) * gap
     x0 = inset + max(0, (inner_w - total) // 2)
     mx = max(values) or 1.0
-    rgb = BAR_FILLS.get(pid, (16, 163, 127))
+    rgb = FG
     usable = height - 10
     for i, v in enumerate(values):
         x = x0 + i * (bar_w + gap)
@@ -337,6 +353,94 @@ def render_cost_chart(pid, days, values):
             alpha = int(130 + 125 * (v / mx))
         y = baseline_y - h
         draw.rounded_rectangle((x, y, x + bar_w - 1, baseline_y - 1), radius=3, fill=rgb + (alpha,))
+    img.save(path)
+    return str(path)
+
+
+MINI_W, MINI_H = 42, 12  # pt；items/widgets/ai_usage.lua 里的 label 宽度要和这里一致
+try:  # 主题前景色（Lua 通过环境变量传进来），栏上图标也是这个颜色
+    FG = tuple(int(os.environ.get("AI_USAGE_FG", "")[i : i + 2], 16) for i in (0, 2, 4))
+except ValueError:
+    FG = (235, 219, 178)
+RED, ORANGE = (251, 73, 52), (254, 128, 25)
+
+
+def pace_rgb(pid, used, expected, normal=None):
+    """按“花得是不是比时间快”着色，不只看百分比：used/expected 就是到重置时预计会用掉的倍数。
+    normal：没事时的颜色，默认各家的品牌色；栏上的仪表传主题前景色，只在有事时才变橙 / 红。"""
+    if used is not None:
+        if used >= 95:
+            return RED
+        if used >= 90:
+            return ORANGE
+        if expected and used >= 10:  # 10% 以下别报警，周期刚开始时比值抖得厉害
+            ratio = used / expected
+            if ratio >= 1.6:
+                return RED
+            if ratio >= 1.2:
+                return ORANGE
+    return normal or BAR_FILLS.get(pid, (16, 163, 127))
+
+
+def render_mini(row):
+    """CodexBar 菜单栏图标的搬运：上粗下细两条。上 = 主额度；下 = 最紧的独立子额度
+    （Cursor 的 API / Auto）。Grok 的产品分项只是同一个池的拆分，没有独立子额度，
+    就用“周期已过去多少”顶上，两条一比就知道有没有超前。条上的刻度 = 按时间该用到哪儿。
+    文件名带内容哈希：SketchyBar 对同一路径不一定重读图，换名才保证重画。"""
+    used = row.get("used")
+    if used is None:  # 没读数（失败 / 余额型）：不画空轨道，Lua 退回文字
+        return ""
+    try:
+        from PIL import Image, ImageDraw
+    except ImportError:
+        return ""
+    import hashlib
+
+    pid = row["id"]
+    pace = usage_pace(used, row.get("period_start"), row.get("period_end"))
+    expected = pace["expected"] if pace else None
+    subs = [
+        w
+        for w in row.get("windows") or []
+        if not w.get("shared")
+        and not w.get("head")  # 主读数自己的窗口已经是上条
+        and w.get("name") not in ("Total", "Credits")
+        and w.get("used") is not None
+    ]
+    sub = max(subs, key=lambda w: w["used"], default=None)
+    top = (used, expected, pace_rgb(pid, used, expected, FG) + (235,))
+    if sub:
+        low = (sub["used"], sub.get("expected"), pace_rgb(pid, sub["used"], sub.get("expected"), FG) + (235,))
+    else:
+        low = (expected, None, FG + (110,))
+
+    scale = 2
+    W, H = MINI_W * scale, MINI_H * scale
+
+    def px(pct):
+        return None if pct is None else int(round((W - 1) * min(max(float(pct), 0.0), 100.0) / 100.0))
+
+    # 先落到像素再哈希：expected 随时间每秒都在变，用原始浮点数文件名会天天换
+    bars = [(px(p) if p is not None and p >= 0.5 else None, px(e), rgba) for p, e, rgba in (top, low)]
+    key = hashlib.md5(repr((bars, pid, FG, MINI_W, MINI_H)).encode()).hexdigest()[:8]
+    BAR_DIR.mkdir(parents=True, exist_ok=True)
+    for old in BAR_DIR.glob(f"{pid}_mini_*.png"):
+        if key not in old.name:
+            old.unlink(missing_ok=True)
+    path = BAR_DIR / f"{pid}_mini_{key}.png"
+    if path.exists():
+        return str(path)
+
+    img = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(img)
+    for (fill_x, tick_x, rgba), y, h in zip(bars, (0, 9 * scale), (6 * scale, 3 * scale)):
+        draw.rounded_rectangle((0, y, W - 1, y + h - 1), radius=h / 2, fill=FG + (38,))
+        if fill_x is not None:
+            fill_x = max(h, fill_x)
+            draw.rounded_rectangle((0, y, fill_x, y + h - 1), radius=h / 2, fill=rgba)
+        if tick_x is not None:  # 细线刻度：压在填充上是暗线，落在空轨道上是亮线，都不抢眼
+            over = fill_x is not None and tick_x <= fill_x
+            draw.line((tick_x, y, tick_x, y + h - 1), fill=(0, 0, 0, 150) if over else FG + (190,), width=1)
     img.save(path)
     return str(path)
 
@@ -369,6 +473,10 @@ def emit(row):
             )
         )
     )
+    print("\t".join(("M", row["id"], render_mini(row))))
+    stamp = row.get("data_ts") or row.get("fetched")
+    if stamp and row.get("status") in ("ok", "stale", "partial"):
+        print("\t".join(("U", row["id"], str(int(stamp)))))
     spend = row.get("spend")
     limit = row.get("spend_limit")
     extra_bar = ""
@@ -453,20 +561,25 @@ def save_cache(data):
     tmp.replace(CACHE)
 
 
-def acquire_lock():
+def acquire_lock(wait=0.0):
+    """拿不到锁（别的刷新在跑）就返回 None；wait>0 时最多等这么多秒（手动刷新用）。"""
     CACHE.parent.mkdir(parents=True, exist_ok=True)
     try:
         fd = os.open(str(LOCK), os.O_CREAT | os.O_RDWR, 0o644)
     except OSError:
         return None
-    try:
-        import fcntl
+    import fcntl
 
-        fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
-        return fd
-    except OSError:
-        os.close(fd)
-        return None
+    deadline = time.time() + wait
+    while True:
+        try:
+            fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            return fd
+        except OSError:
+            if time.time() >= deadline:
+                os.close(fd)
+                return None
+            time.sleep(0.2)
 
 
 GROK_AUTH = Path.home() / ".grok" / "auth.json"
@@ -691,6 +804,7 @@ def fetch_grok():
             "period_range": fmt_period_range(start_iso, reset_iso),
             "hint": fmt_pace_hint(usage_pace(used, start_iso, reset_iso)),
             "share": "",
+            "period_start": start_iso or "",
             "period_end": reset_iso or "",
             "windows": windows,
         }
@@ -819,86 +933,85 @@ def cursor_plan_label():
     return "Cursor " + kind[:1].upper() + kind[1:]
 
 
-def cursor_events(days=30, deadline=None):
-    """Individual usage events. Stop early so a large history cannot block Grok."""
-    now_ms = int(time.time() * 1000)
-    start_ms = now_ms - days * 86400 * 1000
-    events = []
-    for page in range(1, 21):
-        remain = 8.0 if deadline is None else deadline - time.time()
-        if remain <= 0.4:
-            break
-        data = cursor_post(
-            "GetFilteredUsageEvents",
-            {"startDate": str(start_ms), "endDate": str(now_ms), "page": page, "pageSize": 500},
-            timeout=min(8.0, max(1.0, remain)),
-        )
-        if not data:
-            break
-        batch = data.get("usageEventsDisplay") or []
-        events.extend(batch)
-        try:
-            total = int(data.get("totalUsageEventsCount") or 0)
-        except (TypeError, ValueError):
-            total = 0
-        if not batch or len(events) >= total:
-            break
-    return events
-
-
-def cursor_daily(events):
-    """Bucket events into per-day cost/token rows, keyed by local date."""
-    buckets = {}
-    for ev in events:
-        try:
-            ts = int(ev.get("timestamp") or 0) / 1000.0
-        except (TypeError, ValueError):
-            continue
-        if ts <= 0:
-            continue
-        try:
-            day = datetime.fromtimestamp(ts).astimezone().date().isoformat()
-        except (OverflowError, OSError, ValueError):
-            continue
-        usage = ev.get("tokenUsage") or {}
-        try:
-            cents = float(usage.get("totalCents") or 0.0)
-        except (TypeError, ValueError):
-            cents = 0.0
-        tokens = 0
-        for field in CURSOR_TOKEN_FIELDS:
-            try:
-                tokens += int(usage.get(field) or 0)
-            except (TypeError, ValueError):
-                pass
-        bucket = buckets.setdefault(day, {"date": day, "totalCost": 0.0, "totalTokens": 0})
-        bucket["totalCost"] += cents / 100.0
-        bucket["totalTokens"] += tokens
-    return [buckets[key] for key in sorted(buckets)]
-
-
-def attach_cursor_cost(row, deadline=None):
-    daily = cursor_daily(cursor_events(30, deadline=deadline))
+def set_costs(row, pid, daily):
+    """daily：[{date, totalCost, totalTokens}]（Cursor 逐日聚合、`codexbar cost` 的 daily 都是这个形状）
+    → 弹窗里的 今日 / 近 7 天 / 近 30 天 + 两张柱状图。"""
     if not daily:
         return
     today = datetime.now().astimezone().date()
-    win1 = _window_sum(daily, 1, today)
-    win7 = _window_sum(daily, 7, today)
-    win30 = _window_sum(daily, 30, today)
+    wins = {n: _window_sum(daily, n, today) for n in (1, 7, 30)}
     row["costs"] = [
-        {"key": "today", "title": "Today", "cost": win1["cost"], "tokens": win1["tokens"]},
-        {"key": "7d", "title": "Last 7 days", "cost": win7["cost"], "tokens": win7["tokens"]},
-        {"key": "30d", "title": "Last 30 days", "cost": win30["cost"], "tokens": win30["tokens"]},
+        {"key": key, "title": title, "cost": wins[n]["cost"], "tokens": wins[n]["tokens"]}
+        for key, title, n in (("today", "Today", 1), ("7d", "Last 7 days", 7), ("30d", "Last 30 days", 30))
     ]
-    charts = {}
-    chart7 = render_cost_chart("cursor", 7, win7["values"])
-    chart30 = render_cost_chart("cursor", 30, win30["values"])
-    if chart7:
-        charts["7"] = chart7
-    if chart30:
-        charts["30"] = chart30
-    row["cost_charts"] = charts
-    row["daily7"] = win7.get("values") or []
+    row["cost_charts"] = {
+        str(n): path for n in (7, 30) if (path := render_cost_chart(pid, n, wins[n]["values"]))
+    }
+
+
+COST_TTL = 300  # 今天的花费 5 分钟刷一次；过去的日子收完一次就不再请求
+COST_GRACE = 3600  # Cursor 入账有延迟：一天结束后再留 1 小时才算定稿
+DAYS_CACHE = CACHE.with_name("cursor_days.json")
+
+
+def cursor_day_cost(day_start, day_end):
+    """一天的聚合花费。别改回分页拉事件：一个月 3.6 万条，每页 5 秒，拉不完就被截断，
+    而且翻页时新事件会让页错位、重复计数。"""
+    data = cursor_post(
+        "GetAggregatedUsageEvents",
+        {"startDate": str(int(day_start.timestamp() * 1000)), "endDate": str(int(day_end.timestamp() * 1000))},
+        timeout=12,
+    )
+    if data is None:  # 失败；没有花费的日子返回的是空对象（protobuf JSON 省略零值）
+        return None
+    try:
+        tokens = sum(
+            int(data.get(k) or 0)
+            for k in ("totalInputTokens", "totalOutputTokens", "totalCacheWriteTokens", "totalCacheReadTokens")
+        )
+        cost = float(data.get("totalCostCents") or 0.0) / 100.0
+    except (TypeError, ValueError):
+        return None
+    return {"date": day_start.date().isoformat(), "totalCost": cost, "totalTokens": tokens}
+
+
+def attach_cursor_cost(row, deadline=None):
+    from concurrent.futures import ThreadPoolExecutor, wait
+
+    cursor_state()  # 先在本线程读好 token：它先置 {} 再填充，线程池里并发读会拿到半成品
+    now = time.time()
+    today0 = datetime.now().astimezone().replace(hour=0, minute=0, second=0, microsecond=0)
+    try:
+        days = json.loads(DAYS_CACHE.read_text())
+    except (OSError, ValueError):
+        days = {}
+    todo = []
+    for back in range(30):  # 新的先收，7 天的图先完整
+        start = today0 - timedelta(days=back)
+        end = start + timedelta(days=1)
+        entry = days.get(start.date().isoformat())
+        # 收于「当天结束 + 宽限」之前的记录（今天，或昨天刚结束的）按 TTL 重收；之后收的才是定稿
+        if entry is None or (entry["ts"] < end.timestamp() + COST_GRACE and now - entry["ts"] > (0 if FORCE else COST_TTL)):
+            todo.append((start, end))
+    if todo:
+        pool = ThreadPoolExecutor(max_workers=8)
+        futs = [pool.submit(cursor_day_cost, s, e) for s, e in todo]
+        done, _ = wait(futs, timeout=max(1.0, (deadline or now + 10) - time.time()))
+        pool.shutdown(wait=False, cancel_futures=True)
+        for fut in done:
+            try:
+                rec = fut.result()
+            except Exception:
+                rec = None
+            if rec:
+                days[rec["date"]] = dict(rec, ts=now)  # 用请求发出前的时间，别用收到时的
+        keep = {(today0 - timedelta(days=n)).date().isoformat() for n in range(45)}
+        days = {k: v for k, v in days.items() if k in keep}
+        DAYS_CACHE.parent.mkdir(parents=True, exist_ok=True)
+        tmp = DAYS_CACHE.with_suffix(".json.tmp")
+        tmp.write_text(json.dumps(days))
+        tmp.replace(DAYS_CACHE)
+    set_costs(row, "cursor", list(days.values()))
 
 
 def fetch_cursor():
@@ -920,7 +1033,8 @@ def fetch_cursor():
         value = plan_usage.get(key)
         if value is None:
             continue
-        windows.append(make_window(name, value, reset_iso, start_iso))
+        # API（第三方模型）额度只展示接口返回的百分比：不画时间刻度，不推算耗尽时间
+        windows.append(make_window(name, value, reset_iso, start_iso, paced=(key != "apiPercentUsed")))
 
     row.update(
         {
@@ -933,40 +1047,25 @@ def fetch_cursor():
             "reset_at": fmt_reset_at(reset_iso),
             "period": "monthly",
             "period_range": fmt_period_range(start_iso, reset_iso),
+            "period_start": start_iso or "",
             "period_end": reset_iso or "",
             "windows": windows,
         }
     )
 
-    # Dollar fields are a retail-price estimate, not the kill switch.
-    # Enforcement is autoPercentUsed / apiPercentUsed (100% = actually limited).
-    # totalSpend = includedSpend + bonusSpend; bonus is "list $ above the
-    # advertised $400 still billed as INCLUDED_IN_ULTRA", not a leftover gift.
+    # 美元行只用接口返回的数：totalSpend / limit / remaining（单位：分），不加评语
     def _cents(key):
-        raw = plan_usage.get(key)
-        if raw is None:
-            return None
         try:
-            return float(raw)
-        except (TypeError, ValueError):
+            return float(plan_usage[key])
+        except (KeyError, TypeError, ValueError):
             return None
 
-    total, included, limit, bonus = (
-        _cents("totalSpend"),
-        _cents("includedSpend"),
-        _cents("limit"),
-        _cents("bonusSpend"),
-    )
+    total, limit, remaining = _cents("totalSpend"), _cents("limit"), _cents("remaining")
     if total is not None:
         row["spend"] = round(total / 100.0, 2)
-        row["spend_limit"] = None
-    hints = []
-    if included is not None and limit:
-        hints.append(f"套餐标价 ${limit / 100.0:.0f} 已计满")
-    if bonus and bonus > 0:
-        hints.append(f"超出部分 ${bonus / 100.0:.2f} 仍算 included，未按量扣费")
-    hints.append("第三方能不能用看 API 百分比")
-    row["spend_hint"] = " · ".join(hints)
+        row["spend_limit"] = round(limit / 100.0, 2) if limit else None
+    if remaining is not None:
+        row["spend_hint"] = f"套餐额度 · 剩余 ${remaining / 100.0:,.2f}"
 
     try:
         attach_cursor_cost(row, deadline=time.time() + 10)
@@ -975,31 +1074,278 @@ def fetch_cursor():
     return row
 
 
-FETCHERS = {"cursor": fetch_cursor, "grok": fetch_grok}
+FORCE = "--force" in sys.argv  # 卡片右上角的刷新按钮：绕过所有缓存 TTL
+CB_TTL = 300  # CodexBar CLI 慢（Claude / Antigravity 要 10 秒），5 分钟一次够了
+CB_COST = ("codex", "claude", "antigravity")  # `codexbar cost` 读这几家的本地日志
+WINDOW_NAMES = {"primary": "Session", "secondary": "Weekly", "tertiary": "Monthly"}
 
 
-def cache_row_ready(cached, pid):
+def codexbar_json(*args, timeout=14):
+    exe = shutil.which("codexbar")
+    if not exe:
+        return None
+    try:
+        out = subprocess.run(
+            [exe, *args, "--format", "json", "--no-color"], capture_output=True, text=True, timeout=timeout,
+            stdin=subprocess.DEVNULL
+        ).stdout
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+    start, end = out.find("["), out.rfind("]")  # 日志行可能混在 stdout 里
+    try:
+        data = json.loads(out[start : end + 1])
+    except ValueError:
+        return None
+    return data[0] if isinstance(data, list) and data else None
+
+
+def two_lines(text, width=44):
+    """弹窗一行放不下 44 个字符宽；错误信息按词拆成 hint + share 两行。"""
+    import re
+    import textwrap
+
+    text = re.sub(r"^Could not parse \S+ usage:\s*", "", " ".join(str(text or "").split()))
+    lines = (textwrap.wrap(text, width) + ["", ""])[:2]
+    return lines[0], lines[1]
+
+
+def fill_windows(row, windows, head_start, head_reset):
+    """第一个窗口当主读数（和 CodexBar 菜单栏图标上条一致），其余留在弹窗的窗口条里。"""
+    head = windows[0]
+    start, end = parse_iso(head_start), parse_iso(head_reset)
+    short = start is not None and end is not None and end - start < timedelta(days=1)  # 5 小时窗口写日期没意义
+    row.update(
+        status="ok",
+        used=head["used"],
+        label=head["label"],
+        reset=head["reset"],
+        reset_at=head["reset_at"],
+        period=head["name"].lower(),
+        period_range="" if short else fmt_period_range(head_start, head_reset),
+        hint="",  # 主读数窗口的条下面已经有同一句节奏提示，顶部不再重复
+        period_start=head_start,
+        period_end=head_reset,
+        windows=windows,
+    )
+
+
+def parse_codexbar_usage(row, item, title):
+    """`codexbar usage --json` 的 primary / secondary / tertiary → 弹窗的窗口条。
+    第一个有额度的窗口当主读数（和 CodexBar 菜单栏图标上条一致）。"""
+    usage = item.get("usage") or {}
+    labels = item.get("rateWindowLabels") or {}
+    windows, balance, head_start, head_reset = [], "", "", ""
+    for key in ("primary", "secondary", "tertiary"):
+        w = usage.get(key)
+        if not w:
+            continue
+        reset, mins, used = w.get("resetsAt") or "", w.get("windowMinutes"), w.get("usedPercent")
+        if used is None or (not reset and not mins):  # 没有额度窗口：余额型（DeepSeek 的 ¥ 余额）
+            balance = balance or w.get("resetDescription") or ""
+            continue
+        end = parse_iso(reset)
+        start = (end - timedelta(minutes=mins)).isoformat() if end and mins else ""
+        win = make_window(labels.get(key) or WINDOW_NAMES[key], used, reset, start)
+        win["head"] = not windows
+        if win["head"]:
+            head_start, head_reset = start, reset
+        windows.append(win)
+
+    login = (usage.get("loginMethod") or (usage.get("identity") or {}).get("loginMethod") or "").strip()
+    row["plan"] = f"{title} {login.title()}" if login and login.lower() != "offline" else title
+    bits = [balance] if balance else []
+    credits = (item.get("credits") or {}).get("remaining")
+    if credits:
+        bits.append(f"Credits {credits:,.0f}")
+    resets = (usage.get("codexResetCredits") or {}).get("availableCount")
+    if resets:
+        bits.append(f"可用重置券 {resets} 张")
+    row["share"] = "  ·  ".join(bits)
+    if windows:
+        fill_windows(row, windows, head_start, head_reset)
+    elif balance:
+        row.update(status="ok", label=balance.split()[0])
+    else:
+        row.update(status="missing", hint="没有额度数据" + (f"（{login}）" if login else ""))
+
+
+def fetch_codexbar(pid):
+    row = empty_provider(pid, "error")
+    item = codexbar_json("usage", "--provider", pid)
+    if item is None:
+        row["hint"] = "codexbar 没有响应（没装或超时）"
+    elif item.get("error"):
+        row["hint"], row["share"] = two_lines((item["error"] or {}).get("message"))
+        row["plan"] = CATALOG.get(pid, {}).get("title", pid)
+    else:
+        parse_codexbar_usage(row, item, CATALOG.get(pid, {}).get("title", pid))
+    if pid in CB_COST:
+        try:
+            set_costs(row, pid, (codexbar_json("cost", "--provider", pid, timeout=6) or {}).get("daily"))
+        except Exception:
+            pass
+        if row["status"] == "error" and row.get("costs"):
+            row["status"] = "partial"  # 额度抓不到，本地花费照样能看
+    return row
+
+
+CLAUDE_HUD_CACHE = (
+    Path(os.environ.get("CLAUDE_CONFIG_DIR") or Path.home() / ".claude")
+    / "plugins/oh-my-claudecode/.usage-cache-anthropic.json"
+)
+HUD_FRESH = 600  # HUD 只在 Claude Code 运行时刷新；超过 10 分钟标成 stale
+
+
+def claude_hud_usage():
+    """Claude 的 5 小时 / 周额度。CodexBar 在新版 claude CLI 上取不到：/usage 不再输出额度条，
+    钥匙串里的 OAuth 它也没读。OMC HUD 已经用 OAuth 取好并缓存了，直接读缓存——
+    不碰令牌，也不和 HUD 抢那个会限流的接口。没有缓存返回 None。"""
+    try:
+        cache = json.loads(CLAUDE_HUD_CACHE.read_text())
+    except (OSError, ValueError):
+        return None
+    data = cache.get("data") or {}
+    if data.get("fiveHourPercent") is None and data.get("weeklyPercent") is None:
+        return None
+    now = datetime.now(timezone.utc)
+    windows, head_start, head_reset = [], "", ""
+    for name, key, span in (
+        ("Session", "fiveHour", timedelta(hours=5)),
+        ("Weekly", "weekly", timedelta(days=7)),
+        ("Sonnet", "sonnetWeekly", timedelta(days=7)),
+    ):
+        used, reset = data.get(key + "Percent"), data.get(key + "ResetsAt")
+        end = parse_iso(reset)
+        if used is None or end is None or end <= now:  # 窗口已翻篇：缓存里的百分比不再作数
+            continue
+        start = (end - span).isoformat()
+        win = make_window(name, used, reset, start)
+        win["head"] = not windows
+        if win["head"]:
+            head_start, head_reset = start, reset
+        windows.append(win)
+
+    row = empty_provider("claude", "stale")
+    row["plan"] = "Claude"
+    stamp = float(cache.get("lastSuccessAt") or cache.get("timestamp") or 0) / 1000.0
+    row["data_ts"] = stamp
+    age = time.time() - stamp
+    if not windows:
+        row["hint"] = "额度缓存已过期（OMC HUD 只在 Claude Code 运行时刷新）"
+        return row
+    fill_windows(row, windows, head_start, head_reset)
+    if age >= HUD_FRESH:
+        row["status"] = "stale"
+        row["hint"] = "来自 OMC HUD 缓存，Claude Code 运行时才刷新"
+    return row
+
+
+def fetch_claude():
+    row = claude_hud_usage()
+    if row is None:
+        return fetch_codexbar("claude")  # 没装 OMC：退回 CodexBar（新版 CLI 上通常只剩本地花费）
+    try:
+        set_costs(row, "claude", (codexbar_json("cost", "--provider", "claude", timeout=6) or {}).get("daily"))
+    except Exception:
+        pass
+    return row
+
+
+OPENCODE_AUTH = Path.home() / ".local" / "share" / "opencode" / "auth.json"
+OPENCODE_GO_URL = "https://opencode.ai/zen/go/v1/usage"
+# 返回形如 {"usage": {"rolling": {"status": "ok", "percent": 15, "resetsAt": ISO}, "weekly": {…}, "monthly": {…}}}
+OCG_WINDOWS = (("Rolling", "rolling", timedelta(hours=5)), ("Weekly", "weekly", timedelta(days=7)), ("Monthly", "monthly", timedelta(days=30)))
+
+
+def opencodego_keys():
+    """和 OpenCode CLI 用同一份 auth.json。opencode-go 和 opencode（Zen）的 key 都能查 Go 用量，挨个试、过期的跳过。"""
+    try:
+        auth = json.loads(OPENCODE_AUTH.read_text())
+    except (OSError, ValueError):
+        auth = {}
+    keys = [os.environ.get("OPENCODE_API_KEY")] + [(auth.get(k) or {}).get("key") for k in ("opencode-go", "opencode")]
+    return list(dict.fromkeys(k for k in keys if k))
+
+
+def opencodego_windows(data):
+    """`zen/go/v1/usage` → (窗口条, 主窗口起点, 主窗口重置)。"""
+    usage = data.get("usage") if isinstance(data, dict) else None
+    windows, head_start, head_reset = [], "", ""
+    for name, key, span in OCG_WINDOWS:
+        w = usage.get(key) if isinstance(usage, dict) else None
+        if not isinstance(w, dict) or w.get("percent") is None:
+            continue
+        reset = w.get("resetsAt") or ""
+        end = parse_iso(reset)
+        start = (end - span).isoformat() if end else ""  # ponytail: 月度按 30 天估起点，只影响节奏提示
+        win = make_window(name, float(w["percent"]), reset, start or None)
+        win["head"] = not windows
+        if win["head"]:
+            head_start, head_reset = start, reset
+        windows.append(win)
+    return windows, head_start, head_reset
+
+
+def fetch_opencodego():
+    row = empty_provider("opencodego", "error")
+    row["plan"] = CATALOG.get("opencodego", {}).get("title", "OpenCode Go")
+    row["status"] = "auth"  # 没有 key 或全部 401 时保持这个状态
+    row["hint"], row["share"] = "没找到 OpenCode Go 的 API key", "终端运行 opencode auth login"
+    data = None
+    for key in opencodego_keys():
+        req = urllib.request.Request(
+            OPENCODE_GO_URL, headers={"Authorization": f"Bearer {key}", "Accept": "application/json", "User-Agent": "sketchybar-ai-usage"}
+        )
+        try:
+            with urllib.request.urlopen(req, timeout=12) as resp:
+                data = json.loads(resp.read().decode())
+            break
+        except urllib.error.HTTPError as exc:
+            if exc.code != 401:
+                row.update(status="error", hint=f"opencode.ai 返回 {exc.code}", share="")
+                return row
+            expired = "expired" in exc.read().decode(errors="ignore")
+            row["hint"], row["share"] = ("API key 已过期" if expired else "API key 无效"), "Console 新建 key → opencode auth login"
+        except (urllib.error.URLError, TimeoutError, ValueError):
+            row.update(status="error", hint="连不上 opencode.ai", share="")
+            return row
+    if data is None:
+        return row
+    row.update(status="error", hint="", share="")
+    windows, head_start, head_reset = opencodego_windows(data)
+    if not windows:
+        row.update(status="missing", hint="接口没返回额度数据")
+        return row
+    fill_windows(row, windows, head_start, head_reset)
+    return row
+
+
+FETCHERS = {"cursor": fetch_cursor, "grok": fetch_grok, "claude": fetch_claude, "opencodego": fetch_opencodego}
+
+
+def row_fresh(cached, pid):
+    """缓存行还能不能直接用。原生源失败要尽快重试；CodexBar 那几家慢，成败都按 CB_TTL 隔开。"""
     row = (cached.get("rows") or {}).get(pid)
     if not row:
         return False
-    if row.get("status") != "ok":
+    codexbar = CATALOG.get(pid, {}).get("kind") == "codexbar"
+    if not codexbar and row.get("status") != "ok":
         return False
     end = parse_iso(row.get("period_end"))
     if end and datetime.now(timezone.utc) >= end:
         return False
-    return True
+    return time.time() - float(row.get("attempted") or row.get("fetched") or 0) < (CB_TTL if codexbar else TTL)
 
 
 def main():
-    want = sys.argv[1] if len(sys.argv) > 1 else "all"
+    args = [a for a in sys.argv[1:] if not a.startswith("--")]
+    want = args[0] if args else "all"
     requested = PROVIDERS if want in ("", "all") else (want,)
     cached = load_cache()
-    now = time.time()
-    fresh = now - float(cached.get("ts") or 0) < TTL
-    need = [p for p in requested if not cache_row_ready(cached, p) or not fresh]
+    need = [p for p in requested if FORCE or not row_fresh(cached, p)]
 
     if need:
-        fd = acquire_lock()
+        fd = acquire_lock(wait=20.0 if FORCE else 0.0)
         if fd is None:
             for pid in requested:
                 row = cached.get("rows", {}).get(pid) or empty_provider(pid, "stale")
@@ -1010,29 +1356,28 @@ def main():
             return
         try:
             cached = load_cache()
-            now = time.time()
-            fresh = now - float(cached.get("ts") or 0) < TTL
-            need = [p for p in requested if not cache_row_ready(cached, p) or not fresh]
+            need = [p for p in requested if FORCE or not row_fresh(cached, p)]
             rows = dict(cached.get("rows") or {})
             from concurrent.futures import ThreadPoolExecutor, as_completed
+            from functools import partial
 
             fetched_rows = {}
             timeouts = {"cursor": 18, "grok": 12}
 
             def keep(pid, fetched):
-                if fetched.get("status") != "ok" and rows.get(pid, {}).get("status") == "ok":
-                    old = dict(rows[pid])
-                    old["status"] = "stale"
-                    rows[pid] = old
+                if fetched.get("status") not in ("ok", "auth") and rows.get(pid, {}).get("status") in ("ok", "stale"):
+                    # 这次没抓到：留着上次的读数和它的数据时间，只记下“试过了”；
+                    # key 过期 / 无效不是临时故障，不留旧读数，直接报错
+                    rows[pid] = dict(rows[pid], status="stale", attempted=time.time())
                 else:
-                    rows[pid] = fetched
+                    rows[pid] = dict(fetched, fetched=time.time(), attempted=time.time())
                 save_cache({"ts": time.time(), "rows": rows})
 
             with ThreadPoolExecutor(max_workers=max(1, len(need))) as pool:
-                futs = {pool.submit(FETCHERS[pid]): pid for pid in need}
+                futs = {pool.submit(FETCHERS.get(pid) or partial(fetch_codexbar, pid)): pid for pid in need}
                 pending = dict(futs)
                 try:
-                    for fut in as_completed(futs, timeout=22):
+                    for fut in as_completed(futs, timeout=32):
                         pid = pending.pop(fut, None)
                         if pid is None:
                             continue

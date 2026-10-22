@@ -18,4 +18,4 @@ if [ -z "$PYTHON3" ]; then
   exit 0
 fi
 
-exec "$PYTHON3" "$HERE/ai_usage.py" "${1:-all}"
+exec "$PYTHON3" "$HERE/ai_usage.py" "$@"

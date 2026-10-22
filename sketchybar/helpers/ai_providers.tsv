@@ -1,0 +1,27 @@
+# SketchyBar AI 用量 provider 目录 —— Lua（items/widgets/ai_usage.lua）和 Python（helpers/ai_usage.py）读同一份。
+# 列：id <TAB> 显示名 <TAB> 来源 <TAB> 「打开用量页」网址
+# 来源：native = 自己抓（Cursor / Grok / OpenCode Go：读 OpenCode CLI 的 auth.json 里的 key）；local = 读本机缓存（Claude：OMC HUD 的额度缓存 + codexbar cost 的本地花费）；codexbar = 调 `codexbar usage --provider <id>`（需要 CodexBar 里已配好登录）
+# 加一家订阅 = 加一行；id 必须是 `codexbar usage --provider` 认识的名字，图标放 helpers/ai_icons/<id>_bar.png
+# 显示哪些由 ../ai_usage.conf 决定（设置页里点开关就是改它）
+cursor	Cursor	native	https://cursor.com/dashboard?tab=usage
+grok	Grok	native	https://grok.com/?_s=usage
+codex	Codex	codexbar	https://chatgpt.com/codex/settings/usage
+claude	Claude	local	https://claude.ai/settings/usage
+gemini	Gemini	codexbar	https://gemini.google.com
+antigravity	Antigravity	codexbar	https://antigravity.google
+copilot	Copilot	codexbar	https://github.com/settings/copilot
+opencodego	OpenCode Go	native	https://opencode.ai
+deepseek	DeepSeek	codexbar	https://platform.deepseek.com/usage
+kimi	Kimi	codexbar	https://www.kimi.com
+zai	z.ai	codexbar	https://z.ai/manage-apikey/subscription
+minimax	MiniMax	codexbar	https://www.minimax.io
+windsurf	Windsurf	codexbar	https://windsurf.com/subscription/usage
+factory	Factory	codexbar	https://app.factory.ai
+openrouter	OpenRouter	codexbar	https://openrouter.ai/credits
+amp	Amp	codexbar	https://ampcode.com/settings
+augment	Augment	codexbar	https://app.augmentcode.com/account
+kiro	Kiro	codexbar	https://app.kiro.dev
+jetbrains	JetBrains AI	codexbar	https://account.jetbrains.com
+warp	Warp	codexbar	https://app.warp.dev
+perplexity	Perplexity	codexbar	https://www.perplexity.ai/settings/account
+mistral	Mistral	codexbar	https://admin.mistral.ai/plateforme/billing
