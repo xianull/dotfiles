@@ -11,7 +11,11 @@ lalt - 6 : yabai -m space --focus 6
 lalt - 7 : yabai -m space --focus 7
 lalt - 8 : yabai -m space --focus 8
 lalt - 9 : yabai -m space --focus 9
-lalt - q : yabai -m window --focus prev || yabai -m window --focus last
+# Obsidian 里放行 Opt+Q，留给 QuickAdd。
+lalt - q [
+    "Obsidian" ~
+    * : yabai -m window --focus prev || yabai -m window --focus last
+]
 lalt - tab : yabai -m space --focus recent
 # Last focused window. Not lalt-x — tmux binds M-x to kill-pane.
 lalt - a : yabai -m window --focus recent
@@ -134,7 +138,11 @@ lalt - return [
 ]
 
 # WeChat scratchpad: show on current space; hide back to space 6
-lalt - w : ~/.config/yabai/scratchpad-wechat.sh
+# Obsidian 里放行 Opt+W，留给切换工作区。
+lalt - w [
+    "Obsidian" ~
+    * : ~/.config/yabai/scratchpad-wechat.sh
+]
 
 # Displays: external = spaces 1-7, laptop = 8-9 (stacked vertically).
 # Ping-pong the other display's currently visible space.
