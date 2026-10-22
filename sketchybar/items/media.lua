@@ -10,6 +10,11 @@ local MAX_TEXT_W = 260
 local MAX_LYRIC_W = 200
 local LYRIC_SIZE = 10.0
 
+-- 歌名 / 艺人来自网络元数据，拼进 shell 命令要用单引号：%q 是双引号，$ 和反引号照样会被 shell 展开
+local function sh_quote(s)
+	return "'" .. tostring(s or ""):gsub("'", "'\\''") .. "'"
+end
+
 local function measure_text(s, size)
 	if not s or s == "" then
 		return 0
@@ -101,11 +106,11 @@ local media_cover = sbar.add("item", "media.cover", {
 
 -- 封面和字之间的固定空隙。不能写在 title.padding_right 上：
 -- 艺人 width=0 会跟着封面左缘走，右 padding 会把艺人整列往右推进封面。
--- 封面和字之间的空隙。width=8 时双行原点对齐；cover 会吃掉约 5px，可视约 3px。
+-- 原来 width=8 实测只剩约 1pt，长标题被截断的末字贴着封面；13 时可视约 5pt。
 local media_gap = sbar.add("item", "media.gap", {
 	position = "right",
 	drawing = false,
-	width = 8,
+	width = 13,
 	padding_left = 0,
 	padding_right = 0,
 	icon = { drawing = false, width = 0, padding_left = 0, padding_right = 0 },
@@ -265,7 +270,8 @@ local function refresh_artwork(app, title)
 	end
 	art_inflight = true
 	local req = app .. "|" .. title
-	sbar.exec("$CONFIG_DIR/helpers/get_artwork.sh " .. string.format("%q", app), function(output)
+	-- 带上标题：nowplaying-cli 的封面只在标题对得上时才用（防止拿到别的 App 的封面）
+	sbar.exec("$CONFIG_DIR/helpers/get_artwork.sh " .. sh_quote(app) .. " " .. sh_quote(title), function(output)
 		art_inflight = false
 		local path = coerce.text(output):match("([^\r\n]+)") or "NONE"
 		local ok = path and path ~= "NONE" and path ~= ""
@@ -420,7 +426,7 @@ local function load_lyrics()
 	lyric_state = "loading"
 	local gen = lyric_gen
 	sbar.exec(
-		string.format("$CONFIG_DIR/helpers/get_lyrics.sh dump %q %q", cur_title, cur_artist),
+		"$CONFIG_DIR/helpers/get_lyrics.sh dump " .. sh_quote(cur_title) .. " " .. sh_quote(cur_artist),
 		function(out)
 			if gen ~= lyric_gen then
 				return
@@ -573,7 +579,7 @@ local function tick_lyric()
 	lyric_inflight = true
 	local gen = lyric_gen
 	sbar.exec(
-		string.format("$CONFIG_DIR/helpers/get_lyrics.sh pos %q", cur_app ~= "" and cur_app or "Media"),
+		"$CONFIG_DIR/helpers/get_lyrics.sh pos " .. sh_quote(cur_app ~= "" and cur_app or "Media"),
 		function(out)
 			lyric_inflight = false
 			if gen ~= lyric_gen then

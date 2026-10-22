@@ -26,8 +26,12 @@ local wifi_up = sbar.add("item", "widgets.wifi1", {
       family = settings.font.numbers,
       size = 9.0,
     },
-    color = colors.red,
+    color = colors.grey,
     string = "??? Bps",
+    -- 定宽右对齐：去掉前导 0 后字数会变，不定宽的话整组胶囊会跟着网速左右抖。
+    -- 44 = 7 个字 × 5.4pt + 左右 padding 各 3，和原来三位数时的自然宽度一样
+    width = 44,
+    align = "right",
   },
   y_offset = 4,
 })
@@ -48,8 +52,10 @@ local wifi_down = sbar.add("item", "widgets.wifi2", {
       family = settings.font.numbers,
       size = 9.0,
     },
-    color = colors.blue,
+    color = colors.grey,
     string = "??? Bps",
+    width = 44,
+    align = "right",
   },
   y_offset = -4,
 })
@@ -65,7 +71,7 @@ local toggle = sbar.add("item", "widgets.sys_toggle", {
   icon = {
     string = island.expanded and icons.chevron.right or icons.chevron.left,
     font = { size = 12.0 },
-    color = colors.white,
+    color = colors.grey,
     padding_left = 8,
     padding_right = 8,
   },
@@ -190,20 +196,27 @@ local router = sbar.add("item", {
 
 sbar.add("item", "widgets.cpu_wifi.padding", { position = "right", width = settings.group_paddings })
 
+-- provider 输出补零定宽的 "001MBps"：去掉前导 0（"1MBps"），宽度由上面的定宽右对齐兜住。
+-- 换成空格不行：SketchyBar 量宽度时不算前导空白，末字会被裁掉
+local function unpad(s)
+  return ((s or ""):gsub("^0+(%d)", "%1"))
+end
+
 wifi_up:subscribe("network_update", function(env)
-  local up_color = (env.upload == "000 Bps") and colors.grey or colors.red
-  local down_color = (env.download == "000 Bps") and colors.grey or colors.blue
+  -- 有流量用前景色，空闲变暗（方向看箭头，不再靠红 / 蓝区分）
+  local up_color = (env.upload == "000 Bps") and colors.grey or colors.white
+  local down_color = (env.download == "000 Bps") and colors.grey or colors.white
   wifi_up:set({
     icon = { color = up_color },
     label = {
-      string = env.upload,
+      string = unpad(env.upload),
       color = up_color
     }
   })
   wifi_down:set({
     icon = { color = down_color },
     label = {
-      string = env.download,
+      string = unpad(env.download),
       color = down_color
     }
   })

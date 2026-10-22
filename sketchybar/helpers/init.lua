@@ -13,6 +13,7 @@ local bins = {
   root .. "/helpers/event_providers/network_load/bin/network_load",
   root .. "/helpers/menus/bin/menus",
   root .. "/helpers/cpu_temp/bin/cpu_temp",
+  root .. "/helpers/wallpaper_color/bin/wallpaper_color",
 }
 local missing = false
 for i = 1, #bins do

@@ -783,11 +783,46 @@ local function get_current_scheme()
   if file then
     local theme = file:read("*l")
     file:close()
-    if theme and schemes[theme] then
+    if theme and (schemes[theme] or theme == "wallpaper") then
       return theme
     end
   end
   return "gruvbox_material"
+end
+
+-- Wallpaper：栏底 / 胶囊跟主屏壁纸最上面那条的颜色走，深浅也按它定；
+-- 文字和强调色借 Gruvbox Material（壁纸亮就用 Light 版）。换壁纸后 apple.lua 里的 watcher 会重载。
+local WALLPAPER_HELPER = (os.getenv("CONFIG_DIR") or (os.getenv("HOME") .. "/.config/sketchybar"))
+  .. "/helpers/wallpaper_color/bin/wallpaper_color"
+
+local function wallpaper_scheme()
+  local p = io.popen(WALLPAPER_HELPER .. " 2>/dev/null")
+  local out = p and p:read("*l") or ""
+  if p then p:close() end
+  local hex, key = out:match("^(0x%x+) (.+)$")
+  local top = tonumber(hex or "")
+  if not top then
+    print("[sketchybar] 壁纸取色失败（" .. WALLPAPER_HELPER .. "），先用 Gruvbox Material")
+    return schemes.gruvbox_material
+  end
+  local r, g, b = (top >> 16) & 0xff, (top >> 8) & 0xff, top & 0xff
+  -- ponytail: 亮暗只看感知亮度过不过 150，中间调的壁纸可能判得不理想
+  local light = 0.299 * r + 0.587 * g + 0.114 * b > 150
+  local base = light and schemes.gruvbox_material_light or schemes.gruvbox_material
+  -- 从壁纸色往文字色挪 t，挪得越多和栏底差得越开
+  local function toward_text(t)
+    local tr, tg, tb = (base.white >> 16) & 0xff, (base.white >> 8) & 0xff, base.white & 0xff
+    local function m(a, c) return math.floor(a + (c - a) * t + 0.5) end
+    return 0xff000000 | (m(r, tr) << 16) | (m(g, tg) << 8) | m(b, tb)
+  end
+  local s = {}
+  for k, v in pairs(base) do s[k] = v end
+  s.name, s.light, s.wallpaper_key = "Wallpaper", light, key
+  s.bg2 = top               -- zen 的栏底
+  s.bg1 = toward_text(0.10) -- islands 的玻璃胶囊
+  s.bg3 = toward_text(0.18) -- zen 的胶囊
+  s.popup = { bg = (top & 0x00ffffff) | 0xee000000, border = s.bg3 }
+  return s
 end
 
 -- Save current scheme to file
@@ -802,7 +837,7 @@ end
 -- Get colors for current scheme
 local function get_colors()
   local current = get_current_scheme()
-  local scheme = schemes[current]
+  local scheme = current == "wallpaper" and wallpaper_scheme() or schemes[current]
 
   local with_alpha = function(color, alpha)
     if alpha > 1.0 or alpha < 0.0 then return color end
@@ -826,11 +861,13 @@ local function get_colors()
     bg1 = scheme.bg1,
     bg2 = scheme.bg2,
     bg3 = scheme.bg3,
+    wallpaper_key = scheme.wallpaper_key,
     with_alpha = with_alpha,
   }
 end
 
 return {
+  WALLPAPER_HELPER = WALLPAPER_HELPER,
   schemes = schemes,
   get_scheme_names = get_scheme_names,
   get_current_scheme = get_current_scheme,

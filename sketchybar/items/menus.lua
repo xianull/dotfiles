@@ -1,6 +1,7 @@
 local colors = require("colors")
 local icons = require("icons")
 local settings = require("settings")
+local menu_mode = require("helpers.menu_mode")
 
 local menu_watcher = sbar.add("item", {
   drawing = false,
@@ -33,6 +34,18 @@ for i = 1, max_items, 1 do
   menu_items[i] = menu
 end
 
+-- 菜单模式的出口：窗口名（front_app）在菜单模式下是隐藏的，没有它就切不回来
+local menu_close = sbar.add("item", "menu.close", {
+  padding_left = settings.paddings,
+  padding_right = settings.paddings,
+  drawing = false,
+  icon = { drawing = false },
+  label = { string = "✕", font = { size = 12.0 }, color = colors.grey, padding_left = 6, padding_right = 8 },
+})
+menu_close:subscribe("mouse.clicked", function()
+  sbar.trigger("swap_menus_and_spaces")
+end)
+
 sbar.add("bracket", { '/menu\\..*/' }, {
   background = { color = colors.transparent, border_width = 0 }
 })
@@ -46,6 +59,7 @@ local function update_menus(env)
   sbar.exec("$CONFIG_DIR/helpers/menus/bin/menus -l", function(menus)
     sbar.set('/menu\\..*/', { drawing = false })
     menu_padding:set({ drawing = true })
+    menu_close:set({ drawing = true })
     local id = 1
     local function add(menu)
       if id < max_items and type(menu) == "string" and menu ~= "" then
@@ -72,11 +86,14 @@ space_menu_swap:subscribe("swap_menus_and_spaces", function(env)
   -- Lazy require: front_app.lua must load after this file so left-item order stays Apple → spaces → title.
   local front = require("items.front_app")
   if drawing then
+    menu_mode.on = false
     menu_watcher:set( { updates = false })
     sbar.set("/menu\\..*/", { drawing = false })
     sbar.set("/space\\..*/", { drawing = true })
+    menu_mode.resync()
     front.set_chrome(true)
   else
+    menu_mode.on = true
     menu_watcher:set( { updates = true })
     sbar.set("/space\\..*/", { drawing = false })
     front.set_chrome(false)

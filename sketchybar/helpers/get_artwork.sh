@@ -1,15 +1,21 @@
 #!/bin/bash
 # Fetch current track's album artwork into /tmp/sbar_art_*.jpg.
-# Usage: get_artwork.sh APP
+# Usage: get_artwork.sh APP [TITLE]
 # Output: absolute path on success, "NONE" on failure.
 #
 # Strategy (first success wins):
 #   1. App-native artwork (Spotify URL / Music embedded)
-#   2. iTunes Search API (multi-region + multi-query)
-#   3. NetEase Cloud Music search (strong for Chinese catalog)
-#   4. nowplaying-cli artworkData (often broken on Sequoia+)
+#   2. nowplaying-cli artworkData (~0.1s; only used when its title matches TITLE)
+#   3. iTunes Search API (multi-region + multi-query, capped by a time budget)
+#   4. NetEase Cloud Music search (strong for Chinese catalog)
+#
+# nowplaying-cli used to be last ("often broken on Sequoia+"), but it works here
+# and is the only fast source for streamed Apple Music tracks (0 embedded artworks).
+# Behind it, iTunes search runs ~1.9s/request through the proxy and loops over
+# 8 queries, so the 8s watchdog killed the script before anything was printed.
 
 app="$1"
+want_title="$2"
 
 CACHE="${XDG_CACHE_HOME:-$HOME/.cache}/sketchybar"
 mkdir -p "$CACHE"
@@ -31,11 +37,14 @@ fi
 echo $$ >"$LOCKDIR/pid"
 # iTunes fan-out / hung Apple Events can run for minutes. Hard-stop the
 # whole fetch so the next track is not stuck behind a dead helper.
+# Detach from our stdout/stderr: otherwise the background `sleep` keeps the
+# pipe open and every caller ($(...) / sbar.exec) waits the full 8s for EOF.
 (
   sleep 8
   kill -TERM $$ 2>/dev/null
-) &
+) >/dev/null 2>&1 &
 WATCHDOG=$!
+disown "$WATCHDOG" 2>/dev/null # no "Terminated" job notice when cleanup kills it
 cleanup() {
   kill "$WATCHDOG" 2>/dev/null || true
   rm -rf "$LOCKDIR"
@@ -101,11 +110,15 @@ EOF
 }
 
 # Generic fetcher for any nowplaying-cli source.
-# Note: often broken on macOS Sequoia 15+ where Apple restricted MediaRemote.
+# Note: can be broken on macOS Sequoia 15+ where Apple restricted MediaRemote.
 fetch_npc() {
   command -v nowplaying-cli >/dev/null 2>&1 || return 1
-  local data
-  data=$(run_to 2 nowplaying-cli get artworkData 2>/dev/null)
+  local raw title data
+  raw=$(run_to 2 nowplaying-cli get title artworkData 2>/dev/null) || return 1
+  title=$(printf '%s\n' "$raw" | sed -n '1p')
+  data=$(printf '%s\n' "$raw" | sed -n '2p')
+  # System "now playing" may be another app; don't show its cover for this track.
+  [ -n "$want_title" ] && [ "$title" != "$want_title" ] && return 1
   [ -z "$data" ] || [ "$data" = "null" ] && return 1
   printf '%s' "$data" | base64 -d > "$out" 2>/dev/null
   [ -s "$out" ]
@@ -130,7 +143,9 @@ fetch_itunes_search() {
   [ -z "$title" ] && [ -z "$album" ] && return 1
 
   local country term url
-  for country in cn us; do
+  # cn storefront currently returns resultCount=0 for everything (even top hits);
+  # us covers both English and most Chinese catalog. Keep cn as a fallback.
+  for country in us cn; do
     for term in \
       "${artist} ${title}" \
       "${title} ${artist}" \
@@ -138,7 +153,9 @@ fetch_itunes_search() {
       "${title}"
     do
       [ -z "$(echo "$term" | tr -d '[:space:]')" ] && continue
-      url=$(curl -sSfL --max-time 5 -G "https://itunes.apple.com/search" \
+      # Leave time for NetEase and the download before the 8s watchdog fires.
+      [ "$SECONDS" -ge 5 ] && return 1
+      url=$(curl -sSfL --max-time 3 -G "https://itunes.apple.com/search" \
             --data-urlencode "term=${term}" \
             --data-urlencode "entity=song" \
             --data-urlencode "country=${country}" \
@@ -307,8 +324,8 @@ fetch_search_for() {
 }
 
 case "$app" in
-  Spotify)  fetch_spotify || fetch_search_for Spotify || fetch_npc ;;
-  Music)    fetch_music   || fetch_search_for Music   || fetch_npc ;;
+  Spotify)  fetch_spotify || fetch_npc || fetch_search_for Spotify ;;
+  Music)    fetch_music   || fetch_npc || fetch_search_for Music ;;
   *)        fetch_npc     || fetch_search_for "$app" ;;
 esac
 

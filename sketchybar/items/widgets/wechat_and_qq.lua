@@ -8,7 +8,7 @@ local M = {}
 M.qq = sbar.add("item", "widgets.qq", {
 	position = "right",
 	icon = {
-		font = { family = settings.font.text, size = 16.0 },
+		font = { family = settings.font.icons, size = 16.0 }, -- Nerd 字形：写死字体，别靠系统回退（装了别的 NF 会被换成小图标）
 	},
 	label = { font = { family = settings.font.numbers } },
 	update_freq = 5,
@@ -18,7 +18,7 @@ M.qq = sbar.add("item", "widgets.qq", {
 M.wechat = sbar.add("item", "widgets.wechat", {
 	position = "right",
 	icon = {
-		font = { family = settings.font.text, size = 19.0 },
+		font = { family = settings.font.icons, size = 19.0 },
 	},
 	label = { font = { family = settings.font.numbers } },
 	update_freq = 5,

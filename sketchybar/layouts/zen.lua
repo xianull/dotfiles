@@ -15,13 +15,12 @@ return {
     -- 胶囊不要边框，颜色见文件开头
     capsule = { height = 26, corner_radius = 8, bg_alpha = 1, border_alpha = 0 },
     -- 去噪：空桌面不显示 `—`、番茄钟空闲时不常驻 25:00
-    spaces = {
-      hide_empty = true,
-      -- 当前桌面：gruvbox 暖黄淡底（原来的半透明蓝叠在棕灰胶囊上发闷）
-      active_color = colors.yellow,
-      active_alpha = 0.3,
-    },
+    -- 当前桌面高亮沿用默认的主题蓝（和 islands 一致）。原来这里覆盖成 gruvbox 暖黄 0.3，
+    -- 是给棕灰的 gruvbox 底栏配的；Wallpaper 主题下底栏跟壁纸走（常是蓝灰），黄叠上去发浑成土棕色
+    spaces = { hide_empty = true },
     pomodoro = { hide_idle_time = true },
+    -- AI 用量不放数字，放 CodexBar 式的上粗下细两条仪表（颜色按“花得比时间快不快”变）
+    ai_usage = { gauge = true },
   },
   bar = {
     height = 34,
@@ -30,14 +29,5 @@ return {
     padding_left = 8,
     padding_right = 8,
   },
-  -- 常用的留下：电池、音量、微信 / QQ、专注（番茄 + 待办）。
-  -- CPU / GPU / 内存曲线、网速、AI 用量切回 islands 看（sbar-layout islands）
-  widgets = {
-    "items.widgets.battery",
-    "items.widgets.volume",
-    "items.widgets.wechat_and_qq",
-    "items.widgets.pomodoro",
-    "items.widgets.obsidian_todos",
-    "items.widgets.focus_bracket",
-  },
+  -- 小组件不再覆盖：用默认列表（items/widgets/init.lua），含系统岛（CPU / GPU / 内存 / 温度 / 网速）。
 }

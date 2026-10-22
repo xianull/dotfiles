@@ -2,6 +2,7 @@ local colors = require("colors")
 local icons = require("icons")
 local settings = require("settings")
 local app_icons = require("helpers.app_icons")
+local menu_mode = require("helpers.menu_mode")
 
 local spaces = {}
 
@@ -17,7 +18,7 @@ local active_bg = colors.with_alpha(
 local seen = {} -- [i] = { selected = bool, empty = bool }
 
 local function sync_visible(i)
-  if not hide_empty then return end
+  if not hide_empty or menu_mode.on then return end  -- 菜单模式下空间号要保持隐藏
   local st = seen[i] or {}
   local show = st.selected or not st.empty
   sbar.set("space." .. i, { drawing = show })
@@ -112,6 +113,11 @@ for i = 1, 10, 1 do
   space:subscribe("mouse.exited", function(_)
     space:set({ popup = { drawing = false } })
   end)
+end
+
+-- 退出菜单模式后，menus.lua 把空间号整体显示出来，再调这个按“隐藏空桌面”收一遍
+menu_mode.resync = function()
+  for i = 1, 10 do sync_visible(i) end
 end
 
 local space_window_observer = sbar.add("item", {

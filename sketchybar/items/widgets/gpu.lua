@@ -1,33 +1,16 @@
 local icons = require("icons")
 local colors = require("colors")
 local settings = require("settings")
+local sysmon = require("helpers.sysmon")
 local island = require("items.widgets.sys_island")
 
 -- GPU utilization from IOAccelerator "Device Utilization %" (no root).
-local gpu = sbar.add("graph", "widgets.gpu", 42, {
-  position = "right",
+-- SF Symbols 里 cpu 和 gpu 的图标几乎一样（都是芯片），去掉文字前缀后分不清；
+-- GPU 用 Nerd Font 的显卡图标（󰢮）
+local gpu = sysmon.graph("widgets.gpu", "󰢮", {
   drawing = island.expanded,
-  graph = { color = colors.blue },
-  background = {
-    height = 22,
-    color = { alpha = 0 },
-    border_color = { alpha = 0 },
-    drawing = true,
-  },
-  icon = { string = icons.gpu },
-  label = {
-    string = "gpu ??%",
-    font = {
-      family = settings.font.numbers,
-      size = 9.0,
-    },
-    align = "right",
-    padding_right = 0,
-    width = 0,
-    y_offset = 4,
-  },
   update_freq = 2,
-  padding_right = settings.paddings + 6,
+  icon_font = { family = settings.font.icons, size = 17.0 },
 })
 
 local inflight = false
@@ -50,31 +33,10 @@ local function refresh()
       inflight = false
       local load = tonumber((result or ""):match("(%d+)"))
       if not load then
-        gpu:set({
-          graph = { color = colors.grey },
-          label = "gpu ??%",
-        })
+        sysmon.idle(gpu)
         return
       end
-
-      gpu:push({ load / 100. })
-
-      -- Same thresholds as CPU: utilization spikes under graphics load
-      local color = colors.blue
-      if load > 30 then
-        if load < 60 then
-          color = colors.yellow
-        elseif load < 80 then
-          color = colors.orange
-        else
-          color = colors.red
-        end
-      end
-
-      gpu:set({
-        graph = { color = color },
-        label = "gpu " .. load .. "%",
-      })
+      sysmon.show(gpu, load, 60, 80)
     end
   )
 end

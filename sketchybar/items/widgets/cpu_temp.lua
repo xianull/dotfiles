@@ -14,7 +14,7 @@ local cpu_temp = sbar.add("item", "widgets.cpu_temp", {
   drawing = island.expanded,
   icon = {
     string = icons.temperature._0,
-    color = colors.green,
+    color = colors.grey,
     font = { size = 14.0 },
     padding_left = 4,
     padding_right = 2,
@@ -47,19 +47,20 @@ local function refresh()
 
     -- Thresholds tuned for hottest-sensor readings on Apple Silicon
     -- (cores can sit at 60-65°C on idle yet jump to 90+ under load).
+    -- 平时用前景色（图标淡一点），只有真热了才变橙 / 红；图标的温度计高度仍随温度变
     local icon, color
     if t >= 95 then
       icon, color = icons.temperature._66, colors.red
     elseif t >= 80 then
       icon, color = icons.temperature._66, colors.orange
     elseif t >= 65 then
-      icon, color = icons.temperature._33, colors.yellow
+      icon, color = icons.temperature._33, colors.white
     else
-      icon, color = icons.temperature._0, colors.green
+      icon, color = icons.temperature._0, colors.white
     end
 
     cpu_temp:set({
-      icon = { string = icon, color = color },
+      icon = { string = icon, color = (color == colors.white) and colors.grey or color },
       label = { string = t .. "°", color = color },
     })
   end)

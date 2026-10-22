@@ -18,9 +18,13 @@ case "${1:-toggle}" in
     [ -n "$next" ] || next=$(printf '%s\n' $names | head -1) ;;
   *)
     next=$1
-    [ -f "$DIR/layouts/$next.lua" ] || { echo "没有这个方案：$next（可选：$(echo $names)）" >&2; exit 1; } ;;
+    [ -f "$DIR/layouts/$next.lua" ] || { echo "没有这个方案：${next}（可选：$(echo $names)）" >&2; exit 1; } ;;
 esac
 
 printf '%s\n' "$next" > "$FILE"
-PATH="/opt/homebrew/bin:/usr/local/bin:$PATH" sketchybar --reload
+# 换方案会增删上百个组件（islands 265 个 / zen 171 个）。--reload 在原进程里拆这些窗口时
+# SketchyBar 会段错误（layer_set_bounds，实测两次切换两次 SIGSEGV），再由 launchd 拉起来。
+# 直接让 launchd 重启进程，干净且只闪一下；没走 brew 服务时退回 --reload。
+launchctl kickstart -k "gui/$(id -u)/sh.brew.sketchybar" 2>/dev/null \
+  || PATH="/opt/homebrew/bin:/usr/local/bin:$PATH" sketchybar --reload
 echo "SketchyBar 方案：$next"
