@@ -1,0 +1,10 @@
+# Maple Mono CN 自带的中文（资源圆体，圆润）
+font-codepoint-map = U+2E80-U+2EFF=Maple Mono CN
+font-codepoint-map = U+2F00-U+2FDF=Maple Mono CN
+font-codepoint-map = U+3000-U+303F=Maple Mono CN
+font-codepoint-map = U+3040-U+30FF=Maple Mono CN
+font-codepoint-map = U+31C0-U+31EF=Maple Mono CN
+font-codepoint-map = U+3400-U+4DBF=Maple Mono CN
+font-codepoint-map = U+4E00-U+9FFF=Maple Mono CN
+font-codepoint-map = U+F900-U+FAFF=Maple Mono CN
+font-codepoint-map = U+FF00-U+FFEF=Maple Mono CN

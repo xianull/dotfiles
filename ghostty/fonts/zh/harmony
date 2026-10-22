@@ -1,0 +1,10 @@
+# 鸿蒙黑体 HarmonyOS Sans SC（华为，现代黑体）
+font-codepoint-map = U+2E80-U+2EFF=HarmonyOS Sans SC
+font-codepoint-map = U+2F00-U+2FDF=HarmonyOS Sans SC
+font-codepoint-map = U+3000-U+303F=HarmonyOS Sans SC
+font-codepoint-map = U+3040-U+30FF=HarmonyOS Sans SC
+font-codepoint-map = U+31C0-U+31EF=HarmonyOS Sans SC
+font-codepoint-map = U+3400-U+4DBF=HarmonyOS Sans SC
+font-codepoint-map = U+4E00-U+9FFF=HarmonyOS Sans SC
+font-codepoint-map = U+F900-U+FAFF=HarmonyOS Sans SC
+font-codepoint-map = U+FF00-U+FFEF=HarmonyOS Sans SC

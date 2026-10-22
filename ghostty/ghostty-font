@@ -1,0 +1,46 @@
+#!/bin/sh
+# 切换 Ghostty 字体，英文、中文分开选（ghostty/fonts/en、ghostty/fonts/zh 下一个文件一款）。
+#   ghostty-font                    列出全部，* 是当前的
+#   ghostty-font en <名字|next>     换英文字体
+#   ghostty-font zh <名字|next>     换中文字体
+# 切完让 Ghostty 重载配置，再打一段测试文本方便对比。
+set -eu
+DIR="${HOME}/.config/ghostty/fonts"
+
+current() { l=$(readlink "$DIR/$1-current" 2>/dev/null || true); [ -n "$l" ] && basename "$l" || true; }
+
+if [ $# -eq 0 ]; then
+  for kind in en zh; do
+    cur=$(current $kind)
+    [ "$kind" = en ] && echo "英文 (ghostty-font en …)" || echo "中文 (ghostty-font zh …)"
+    for n in $(ls "$DIR/$kind"); do
+      [ "$n" = "$cur" ] && mark="*" || mark=" "
+      printf '%s %-12s %s\n' "$mark" "$n" "$(sed -n '1s/^# //p' "$DIR/$kind/$n")"
+    done
+    echo
+  done
+  exit 0
+fi
+
+kind=$1
+case "$kind" in en|zh) ;; *) echo "用法：ghostty-font [en|zh] [名字|next]" >&2; exit 1 ;; esac
+all=$(ls "$DIR/$kind")
+want=${2:-next}
+if [ "$want" = next ]; then
+  want=$(printf '%s\n' $all | grep -A1 -x "$(current $kind)" | sed -n 2p)
+  [ -n "$want" ] || want=$(printf '%s\n' $all | head -1)
+fi
+# 名字不分大小写（文件系统本来就不分，这里统一成文件的真名，列表的 * 才对得上）
+name=$(printf '%s\n' $all | grep -ix -- "$want" | head -1 || true)
+[ -n "$name" ] || { echo "没有这个字体：${want}（可选：$(echo $all)）" >&2; exit 1; }
+
+ln -sfn "$kind/$name" "$DIR/$kind-current"
+
+# Ghostty 没有命令行重载；它在最前面时借 skhd 按一下 Cmd+Shift+,（reload_config）
+front=$(yabai -m query --windows --window 2>/dev/null | jq -r '.app // empty' 2>/dev/null || true)
+if ! { [ "$front" = "Ghostty" ] && command -v skhd >/dev/null && skhd -k "cmd + shift - 0x2B"; }; then
+  echo "（到 Ghostty 里按 Cmd+Shift+, 重载）"
+fi
+
+printf '\n\033[1m英文：%s   中文：%s\033[0m\n' "$(current en)" "$(current zh)"
+cat "$DIR/_sample.txt"

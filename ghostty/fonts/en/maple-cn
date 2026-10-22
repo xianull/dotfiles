@@ -1,0 +1,5 @@
+# Maple Mono CN（原来在用的英文）+ Hack Nerd Font 补图标
+font-family = "Maple Mono CN"
+font-family = "Hack Nerd Font"
+font-feature = calt
+font-feature = ss01

@@ -1,0 +1,10 @@
+# 朱雀仿宋 Zhuque Fangsong（仿宋，只有常规字重）
+font-codepoint-map = U+2E80-U+2EFF=Zhuque Fangsong (technical preview)
+font-codepoint-map = U+2F00-U+2FDF=Zhuque Fangsong (technical preview)
+font-codepoint-map = U+3000-U+303F=Zhuque Fangsong (technical preview)
+font-codepoint-map = U+3040-U+30FF=Zhuque Fangsong (technical preview)
+font-codepoint-map = U+31C0-U+31EF=Zhuque Fangsong (technical preview)
+font-codepoint-map = U+3400-U+4DBF=Zhuque Fangsong (technical preview)
+font-codepoint-map = U+4E00-U+9FFF=Zhuque Fangsong (technical preview)
+font-codepoint-map = U+F900-U+FAFF=Zhuque Fangsong (technical preview)
+font-codepoint-map = U+FF00-U+FFEF=Zhuque Fangsong (technical preview)

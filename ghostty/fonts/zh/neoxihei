@@ -1,0 +1,10 @@
+# 霞鹜新晰黑 LXGW Neo XiHei（文楷作者的黑体，屏显清晰）
+font-codepoint-map = U+2E80-U+2EFF=LXGW Neo XiHei
+font-codepoint-map = U+2F00-U+2FDF=LXGW Neo XiHei
+font-codepoint-map = U+3000-U+303F=LXGW Neo XiHei
+font-codepoint-map = U+3040-U+30FF=LXGW Neo XiHei
+font-codepoint-map = U+31C0-U+31EF=LXGW Neo XiHei
+font-codepoint-map = U+3400-U+4DBF=LXGW Neo XiHei
+font-codepoint-map = U+4E00-U+9FFF=LXGW Neo XiHei
+font-codepoint-map = U+F900-U+FAFF=LXGW Neo XiHei
+font-codepoint-map = U+FF00-U+FFEF=LXGW Neo XiHei

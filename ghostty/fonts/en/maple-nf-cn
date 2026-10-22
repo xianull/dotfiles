@@ -1,0 +1,4 @@
+# Maple Mono NF CN：自带 Nerd 图标；中文选 zh/none 时用它自带的中文（严格 2:1）
+font-family = "Maple Mono NF CN"
+font-feature = calt
+font-feature = ss01

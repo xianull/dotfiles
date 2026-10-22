@@ -1,0 +1,10 @@
+# 更纱黑体（= 思源黑体，和英文严格 2:1）
+font-codepoint-map = U+2E80-U+2EFF=Sarasa Term SC
+font-codepoint-map = U+2F00-U+2FDF=Sarasa Term SC
+font-codepoint-map = U+3000-U+303F=Sarasa Term SC
+font-codepoint-map = U+3040-U+30FF=Sarasa Term SC
+font-codepoint-map = U+31C0-U+31EF=Sarasa Term SC
+font-codepoint-map = U+3400-U+4DBF=Sarasa Term SC
+font-codepoint-map = U+4E00-U+9FFF=Sarasa Term SC
+font-codepoint-map = U+F900-U+FAFF=Sarasa Term SC
+font-codepoint-map = U+FF00-U+FFEF=Sarasa Term SC

@@ -1,0 +1,10 @@
+# 霞鹜文楷等宽 Medium（原来在用的中文，楷体风）
+font-codepoint-map = U+2E80-U+2EFF=霞鹜文楷等宽 Medium
+font-codepoint-map = U+2F00-U+2FDF=霞鹜文楷等宽 Medium
+font-codepoint-map = U+3000-U+303F=霞鹜文楷等宽 Medium
+font-codepoint-map = U+3040-U+30FF=霞鹜文楷等宽 Medium
+font-codepoint-map = U+31C0-U+31EF=霞鹜文楷等宽 Medium
+font-codepoint-map = U+3400-U+4DBF=霞鹜文楷等宽 Medium
+font-codepoint-map = U+4E00-U+9FFF=霞鹜文楷等宽 Medium
+font-codepoint-map = U+F900-U+FAFF=霞鹜文楷等宽 Medium
+font-codepoint-map = U+FF00-U+FFEF=霞鹜文楷等宽 Medium
