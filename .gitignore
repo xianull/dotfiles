@@ -54,6 +54,8 @@ zsh/secrets.zsh
 
 # Backups / scratch
 *.bak
+*.bak.*
+.bak-*/
 .tmp_icons/
 
 # Compiled sketchybar helpers (rebuild via make)
